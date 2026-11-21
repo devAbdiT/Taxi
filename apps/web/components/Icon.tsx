@@ -94,7 +94,8 @@ const paths = {
 
 export type IconName = keyof typeof paths;
 
-export function Icon({ name, className = "size-5" }: { name: IconName; className?: string }) {
+export function Icon({ name, className = "" }: { name: IconName; className?: string }) {
+  const size = /\bsize-/.test(className) ? "" : "size-5";
   return (
     <svg
       viewBox="0 0 24 24"
@@ -103,7 +104,7 @@ export function Icon({ name, className = "size-5" }: { name: IconName; className
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={`shrink-0 ${className}`}
+      className={`shrink-0 ${size} ${className}`}
       aria-hidden="true"
     >
       {paths[name]}
