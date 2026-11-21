@@ -56,7 +56,7 @@ export default function HomePage() {
           </h1>
           <p className="mt-4 max-w-md text-lg text-white/90">{t("home.pitch")}</p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <ButtonLink href="/login" variant="accent" className="sm:min-w-44">
+            <ButtonLink href="/register" variant="accent" className="sm:min-w-44">
               {t("home.ctaJoin")}
             </ButtonLink>
             <ButtonLink href="/#how" variant="secondary" className="sm:min-w-44">

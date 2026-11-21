@@ -82,7 +82,7 @@ export default function StationPage() {
       </section>
       <div className="grid gap-4 lg:grid-cols-2">
         {station.routes.map((queue) => (
-          <section key={queue.route.id} className="rounded-[20px] bg-card p-4 shadow-card">
+          <section key={queue.route.id} className="min-w-0 rounded-[20px] bg-card p-4 shadow-card">
             <h2 className="font-display text-xl font-bold">{routeName(queue.route, lang)}</h2>
             <p className="text-sm text-muted">{t("station.waiting", { n: queue.entries.length })}</p>
             {queue.entries.length === 0 && <EmptyState title={t("station.empty")} />}
@@ -91,7 +91,7 @@ export default function StationPage() {
               if (queue.entries.length > 0 && people.length === 0) return <EmptyState title={t("station.noMatch")} />;
               if (people.length === 0) return null;
               return (
-                <div className="mt-3 overflow-x-auto">
+                <div className="relative mt-3 overflow-x-auto">
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-line text-sm text-muted">

@@ -1297,7 +1297,7 @@ export function demoJoin(priority: boolean) {
 }
 
 export function demoBumpMe() {
-  const token = localStorage.getItem("taxiflow.token");
+  const token = sessionStorage.getItem("taxiflow.token") ?? localStorage.getItem("taxiflow.token");
   const user = userFromToken(token);
   if (!user) return;
   const d = load();

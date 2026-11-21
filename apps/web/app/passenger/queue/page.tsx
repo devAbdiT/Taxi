@@ -90,12 +90,21 @@ export default function PassengerQueuePage() {
 
       <div role="status" aria-live="polite">
         {called ? (
-          <div className="pulse-ring flex flex-col gap-2 rounded-[20px] bg-go-soft p-5 text-ink">
-            <p className="flex items-start gap-3 font-display text-2xl font-bold leading-snug">
-              <Icon name="bell" className="mt-1 size-7" />
+          <div className="pulse-ring flex flex-col items-center gap-3 rounded-[24px] border-4 border-go bg-go-soft p-4 text-center text-ink sm:p-6">
+            <Icon name="bell" className="size-10 text-go" />
+            <p className="font-display text-4xl font-bold leading-none sm:text-5xl">{t("queue.boardNowTitle")}</p>
+            <p className="sr-only">
               {t("queue.boardNow", { plate: taxiPlate ?? "", station: stationName(route.origin, lang) })}
             </p>
-            <p className="font-display text-3xl font-bold tracking-wide">{taxiPlate}</p>
+            <div className="w-full rounded-2xl bg-white px-3 py-3 shadow-card">
+              <p className="text-sm font-semibold text-muted">{t("queue.taxiPlate")}</p>
+              <p className="font-display text-4xl font-bold leading-tight tracking-wide [overflow-wrap:anywhere] sm:text-5xl">
+                {taxiPlate}
+              </p>
+            </div>
+            <p className="font-display text-2xl font-bold leading-snug [overflow-wrap:anywhere]">
+              {t("queue.atStation", { station: stationName(route.origin, lang) })}
+            </p>
             <p className="text-base">{t("queue.calledHint")}</p>
           </div>
         ) : (

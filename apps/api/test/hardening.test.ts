@@ -177,14 +177,37 @@ describe("demo reset and the SMS log", () => {
 
     const admin = await prisma.user.findUnique({ where: { phone: "0911000099" } });
     expect(admin?.role).toBe("ADMIN");
+    expect(admin?.name).toBe("Selam Tadesse");
+
+    const stations = await prisma.station.findMany({ select: { name: true }, orderBy: { name: "asc" } });
+    expect(stations.map((station) => station.name)).toEqual([
+      "Awetu",
+      "Bishishe",
+      "Bus station",
+      "Hermata",
+      "Jimma University",
+      "Jiren",
+      "Merkato",
+      "University Hospital",
+    ]);
+
+    const kebede = await prisma.user.findUniqueOrThrow({
+      where: { phone: "0911000001" },
+      include: { taxi: { include: { currentStation: true } } },
+    });
+    expect(kebede.name).toBe("Kebede Alemu");
+    expect(kebede.taxi).toMatchObject({ plate: "OR 3-42115", status: "AT_STATION", currentStation: { name: "Merkato" } });
+    expect(await prisma.report.count()).toBe(3);
+    expect(await prisma.trip.count({ where: { status: "COMPLETED" } })).toBe(2);
 
     const passenger = await prisma.user.findUniqueOrThrow({ where: { phone: "0911000100" } });
+    expect(passenger.name).toBe("Hana Bekele");
     await prisma.notification.create({
       data: {
         userId: passenger.id,
         type: "QUEUE_CALLED",
         title: "Taxi ready",
-        body: "Taxi 3-AA-10003 at Area B is ready. Board now.",
+        body: "Taxi OR 3-55012 at Jimma University is ready. Board now.",
       },
     });
 
@@ -192,8 +215,8 @@ describe("demo reset and the SMS log", () => {
     expect(sms.status).toBe(200);
     expect(sms.body.messages[0]).toMatchObject({
       to: "0911000100",
-      recipientName: "Demo Passenger",
-      text: "TaxiFlow: Taxi 3-AA-10003 at Area B is ready. Board now.",
+      recipientName: "Hana Bekele",
+      text: "TaxiFlow: Taxi OR 3-55012 at Jimma University is ready. Board now.",
     });
     expect(sms.body.messages.length).toBeLessThanOrEqual(100);
   });
