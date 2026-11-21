@@ -6,6 +6,7 @@ export type {
   AuthResponse,
   CallPassengersRequest,
   ContractRequest,
+  ContractType,
   CreateContractRequest,
   CreateRatingRequest,
   CreateReportRequest,

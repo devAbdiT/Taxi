@@ -10,6 +10,7 @@ const links: { href: string; label: TKey }[] = [
   { href: "/passenger/queue", label: "nav.myQueue" },
   { href: "/passenger/trips", label: "nav.trips" },
   { href: "/passenger/report", label: "nav.report" },
+  { href: "/contracts", label: "nav.contracts" },
 ];
 
 const item =

@@ -131,6 +131,7 @@ function unwrap(path: string, data: unknown): unknown {
   ) {
     return body.trip;
   }
+  if (body.request && typeof body.request === "object" && p === "/contracts") return body.request;
   if (body.rating && typeof body.rating === "object" && p === "/ratings") return body.rating;
   if (body.report && typeof body.report === "object" && (p === "/reports" || p.includes("/reports/"))) {
     return body.report;

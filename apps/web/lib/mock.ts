@@ -686,7 +686,7 @@ const routes: RouteDef[] = [
         createdAt: nowIso(),
       };
       load().contracts.push(contract);
-      return created(contract);
+      return created({ request: contract });
     },
   },
 

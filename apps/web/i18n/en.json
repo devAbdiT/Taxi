@@ -18,6 +18,7 @@
   "nav.myQueue": "My queue",
   "nav.trips": "Trips",
   "nav.report": "Report",
+  "nav.contracts": "Private hire",
 
   "passenger.title": "Where are you going?",
   "passenger.stepRoute": "1. Choose your route",
@@ -235,5 +236,19 @@
   "admin.note": "Resolution note",
   "admin.review": "Start review",
   "admin.resolve": "Mark resolved",
-  "admin.reopen": "Reopen"
+  "admin.reopen": "Reopen",
+
+  "contract.title": "Private or contract transport",
+  "contract.type": "What is it for",
+  "contract.pickup": "Pickup",
+  "contract.destination": "Destination",
+  "contract.schedule": "When",
+  "contract.count": "How many passengers",
+  "contract.notes": "Notes, optional",
+  "contract.submit": "Send request",
+  "contract.thanks": "Request sent. The association will contact you.",
+  "contractType.FAMILY": "Family",
+  "contractType.SCHOOL": "School",
+  "contractType.EMPLOYEE": "Employees",
+  "contractType.SPECIAL": "Special trip"
 }

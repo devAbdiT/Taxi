@@ -18,6 +18,7 @@
   "nav.myQueue": "የእኔ ወረፋ",
   "nav.trips": "ጉዞዎች",
   "nav.report": "ሪፖርት",
+  "nav.contracts": "የግል ቅጥር",
 
   "passenger.title": "ወዴት ይሄዳሉ?",
   "passenger.stepRoute": "1. መስመርዎን ይምረጡ",
@@ -235,5 +236,19 @@
   "admin.note": "የመፍትሄ ማስታወሻ",
   "admin.review": "ግምገማ ጀምር",
   "admin.resolve": "ተፈቷል በል",
-  "admin.reopen": "እንደገና ክፈት"
+  "admin.reopen": "እንደገና ክፈት",
+
+  "contract.title": "የግል ወይም የውል መጓጓዣ",
+  "contract.type": "ለምንድነው",
+  "contract.pickup": "መነሻ",
+  "contract.destination": "መድረሻ",
+  "contract.schedule": "መቼ",
+  "contract.count": "ስንት ተሳፋሪዎች",
+  "contract.notes": "ማስታወሻ፣ አማራጭ",
+  "contract.submit": "ጥያቄ ላክ",
+  "contract.thanks": "ጥያቄዎ ተልኳል። ማህበሩ ያነጋግርዎታል።",
+  "contractType.FAMILY": "ቤተሰብ",
+  "contractType.SCHOOL": "ትምህርት ቤት",
+  "contractType.EMPLOYEE": "ሰራተኞች",
+  "contractType.SPECIAL": "ልዩ ጉዞ"
 }
