@@ -10,7 +10,8 @@ This is the contract both developers build against. The source of truth for ever
 | Auth | `Authorization: Bearer <token>` on every endpoint except `/health`, `/auth/register` and `/auth/login`. The token comes from register or login. |
 | Body | JSON, `Content-Type: application/json`, max 100 kB. |
 | Dates | ISO 8601 strings in UTC (`"2026-11-21T12:30:00.000Z"`). Show them as relative text ("5 min ago"), never as clock time. |
-| Ids | Opaque strings (cuid). |
+| Ids | Opaque strings (cuid). They change on every reseed, so never hard-code them; tokens from before a reseed get 401 on `/me`. |
+| Token | JWT, valid for 7 days. |
 | Phone | Input may be `09…`, `07…`, `+2519…`, `2519…` (spaces and dashes ignored). Stored and returned as `09XXXXXXXX` or `07XXXXXXXX`. `normalizePhone()` in shared does the same thing on the client. |
 | Position | 1-based rank among WAITING entries on the same route: priority first, then earliest `joinedAt`. Computed by the server, never stored. |
 | Privacy | Driver and station responses contain a passenger's first name and priority flag only, never a phone number. |
@@ -33,9 +34,9 @@ Errors every authenticated endpoint can return, not repeated below:
 | 400 | `validation_error` | Body, params or query fail the Zod schema |
 | 400 | `invalid_json` | Body is not valid JSON |
 | 401 | `unauthorized` | Missing, invalid or expired token. Send the user to `/login`. |
-| 403 | `forbidden` | Logged in with the wrong role for this endpoint |
+| 403 | `forbidden` | Logged in with the wrong role for this endpoint. Every path under `/driver`, `/station` and `/admin` checks the role first. |
 | 404 | `not_found` | No such endpoint |
-| 429 | `rate_limited` | Too many requests (login and queue join) |
+| 429 | `rate_limited` | Too many requests: 10 logins per phone number per minute, 10 registrations per IP per minute, and queue join |
 | 500 | `internal_error` | Server bug |
 
 All codes are listed in `ErrorCode` in shared.

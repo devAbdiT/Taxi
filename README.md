@@ -19,11 +19,15 @@ Node.js 22 or newer, npm, Docker (for the local PostgreSQL).
 
 ```bash
 npm install                                  # install every workspace
-cp apps/api/.env.example apps/api/.env       # then set JWT_SECRET
+cp apps/api/.env.example apps/api/.env       # then set JWT_SECRET (and DATABASE_URL if not using Docker)
 npm run db:up                                # start PostgreSQL in Docker
+npm run db:deploy -w @taxiflow/api           # apply migrations
+npm run seed -w @taxiflow/api -- --reset     # wipe and load the demo data
 npm run dev                                  # build shared, start the API on http://localhost:4000
 curl http://localhost:4000/health            # {"ok":true,...}
 ```
+
+Every demo account uses the password `demo1234`: admin `0911000099`, station reps `0911000011` (Area A) and `0911000012` (Area B), drivers `0911000001` to `0911000003`, demo passenger `0911000100`, and passengers `0911000101` to `0911000120`.
 
 ## Scripts
 
@@ -34,6 +38,9 @@ curl http://localhost:4000/health            # {"ok":true,...}
 | `npm run build:shared` | Builds only `packages/shared` (run after pulling contract changes) |
 | `npm run typecheck` | Type-checks every workspace |
 | `npm run db:up` / `npm run db:down` | Starts or stops the local PostgreSQL |
+| `npm run db:migrate -w @taxiflow/api` | Creates and applies a new migration after a schema change |
+| `npm run db:deploy -w @taxiflow/api` | Applies pending migrations (use this on hosted databases) |
+| `npm run seed -w @taxiflow/api -- --reset` | Wipes the database and loads the demo data |
 
 ## Environment variables (apps/api)
 
