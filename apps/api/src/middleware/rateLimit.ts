@@ -24,6 +24,16 @@ export const loginLimiter = rateLimit({
   },
 });
 
+/** 10 queue joins per passenger per minute. Use after requireAuth. */
+export const queueJoinLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: rateLimitedBody,
+  keyGenerator: (req) => req.auth?.userId ?? ipKey(req.ip),
+});
+
 /** 10 registrations per IP per minute. */
 export const registerLimiter = rateLimit({
   windowMs: 60_000,

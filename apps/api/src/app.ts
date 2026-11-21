@@ -4,6 +4,7 @@ import type { HealthResponse } from "@taxiflow/shared";
 import { env } from "./lib/env.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.js";
 import { authRouter } from "./routes/auth.js";
+import { queueRouter } from "./routes/queue.js";
 import { referenceRouter } from "./routes/reference.js";
 import { roleGuards } from "./routes/roleGuards.js";
 
@@ -21,6 +22,7 @@ export function createApp() {
 
   app.use(authRouter);
   app.use(referenceRouter);
+  app.use(queueRouter);
   app.use(roleGuards);
 
   app.use(notFoundHandler);

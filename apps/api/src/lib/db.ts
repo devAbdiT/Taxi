@@ -4,6 +4,8 @@ import { env } from "./env.js";
 
 export const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
+  // Hosted databases can take several seconds to open a connection.
+  transactionOptions: { maxWait: 15_000, timeout: 20_000 },
 });
 
 export type Db = typeof prisma;

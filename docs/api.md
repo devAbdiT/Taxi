@@ -36,7 +36,7 @@ Errors every authenticated endpoint can return, not repeated below:
 | 401 | `unauthorized` | Missing, invalid or expired token. Send the user to `/login`. |
 | 403 | `forbidden` | Logged in with the wrong role for this endpoint. Every path under `/driver`, `/station` and `/admin` checks the role first. |
 | 404 | `not_found` | No such endpoint |
-| 429 | `rate_limited` | Too many requests: 10 logins per phone number per minute, 10 registrations per IP per minute, and queue join |
+| 429 | `rate_limited` | Too many requests: 10 logins per phone number per minute, 10 registrations per IP per minute, 10 queue joins per passenger per minute |
 | 500 | `internal_error` | Server bug |
 
 All codes are listed in `ErrorCode` in shared.
