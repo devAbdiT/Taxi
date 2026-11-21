@@ -1,0 +1,232 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  PASSENGER
+  DRIVER
+  STATION_REP
+  ADMIN
+}
+
+enum QueueStatus {
+  WAITING
+  CALLED
+  BOARDED
+  CANCELLED
+  NO_SHOW
+}
+
+enum TaxiStatus {
+  OFFLINE
+  AT_STATION
+  LOADING
+  EN_ROUTE
+}
+
+enum TripStatus {
+  LOADING
+  DEPARTED
+  COMPLETED
+  CANCELLED
+}
+
+enum AssistanceType {
+  NONE
+  DISABILITY
+  ELDERLY
+  PREGNANT
+  MOBILITY
+  OTHER
+}
+
+enum NotificationType {
+  QUEUE_JOINED
+  QUEUE_CALLED
+  QUEUE_RETURNED
+  QUEUE_REMOVED
+  QUEUE_NO_SHOW
+  TRIP_COMPLETED
+  PASSENGER_LEFT
+  REPORT_FILED
+  REPORT_UPDATED
+  SYSTEM
+}
+
+enum ReportType {
+  OVERCHARGING
+  UNSAFE_DRIVING
+  DISRESPECT
+  DISCRIMINATION
+  LOST_PROPERTY
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+}
+
+enum ContractType {
+  FAMILY
+  SCHOOL
+  EMPLOYEE
+  SPECIAL
+}
+
+enum ContractStatus {
+  NEW
+  CONTACTED
+  CONFIRMED
+  CLOSED
+}
+
+model User {
+  id               String            @id @default(cuid())
+  name             String
+  phone            String            @unique
+  passwordHash     String
+  role             Role
+  language         String            @default("en")
+  stationId        String?
+  station          Station?          @relation(fields: [stationId], references: [id])
+  taxi             Taxi?
+  queueEntries     QueueEntry[]
+  notifications    Notification[]
+  ratings          Rating[]
+  reportsFiled     Report[]          @relation("Reporter")
+  reportsAbout     Report[]          @relation("ReportedDriver")
+  contractRequests ContractRequest[]
+  createdAt        DateTime          @default(now())
+}
+
+model Station {
+  id         String  @id @default(cuid())
+  name       String
+  nameAm     String?
+  reps       User[]
+  routesFrom Route[] @relation("Origin")
+  routesTo   Route[] @relation("Destination")
+  taxis      Taxi[]
+}
+
+model Route {
+  id            String       @id @default(cuid())
+  originId      String
+  destinationId String
+  origin        Station      @relation("Origin", fields: [originId], references: [id])
+  destination   Station      @relation("Destination", fields: [destinationId], references: [id])
+  trips         Trip[]
+  queueEntries  QueueEntry[]
+
+  @@unique([originId, destinationId])
+}
+
+model Taxi {
+  id               String     @id @default(cuid())
+  plate            String     @unique
+  capacity         Int
+  status           TaxiStatus @default(OFFLINE)
+  driverId         String     @unique
+  driver           User       @relation(fields: [driverId], references: [id])
+  currentStationId String?
+  currentStation   Station?   @relation(fields: [currentStationId], references: [id])
+  trips            Trip[]
+}
+
+model Trip {
+  id         String       @id @default(cuid())
+  taxiId     String
+  taxi       Taxi         @relation(fields: [taxiId], references: [id])
+  routeId    String
+  route      Route        @relation(fields: [routeId], references: [id])
+  status     TripStatus   @default(LOADING)
+  createdAt  DateTime     @default(now())
+  departedAt DateTime?
+  arrivedAt  DateTime?
+  entries    QueueEntry[]
+  ratings    Rating[]
+  reports    Report[]
+}
+
+model QueueEntry {
+  id          String         @id @default(cuid())
+  passengerId String
+  passenger   User           @relation(fields: [passengerId], references: [id])
+  routeId     String
+  route       Route          @relation(fields: [routeId], references: [id])
+  status      QueueStatus    @default(WAITING)
+  assistance  AssistanceType @default(NONE)
+  isPriority  Boolean        @default(false)
+  joinedAt    DateTime       @default(now())
+  calledAt    DateTime?
+  boardedAt   DateTime?
+  tripId      String?
+  trip        Trip?          @relation(fields: [tripId], references: [id])
+
+  @@index([routeId, status, isPriority, joinedAt])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  type      NotificationType
+  title     String
+  body      String
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Rating {
+  id          String   @id @default(cuid())
+  tripId      String
+  trip        Trip     @relation(fields: [tripId], references: [id])
+  passengerId String
+  passenger   User     @relation(fields: [passengerId], references: [id])
+  stars       Int
+  tags        String[]
+  comment     String?
+  createdAt   DateTime @default(now())
+
+  @@unique([tripId, passengerId])
+}
+
+model Report {
+  id             String       @id @default(cuid())
+  reporterId     String
+  reporter       User         @relation("Reporter", fields: [reporterId], references: [id])
+  tripId         String?
+  trip           Trip?        @relation(fields: [tripId], references: [id])
+  driverId       String?
+  driver         User?        @relation("ReportedDriver", fields: [driverId], references: [id])
+  type           ReportType
+  description    String
+  status         ReportStatus @default(OPEN)
+  driverResponse String?
+  resolutionNote String?
+  createdAt      DateTime     @default(now())
+}
+
+model ContractRequest {
+  id             String         @id @default(cuid())
+  requesterId    String
+  requester      User           @relation(fields: [requesterId], references: [id])
+  type           ContractType
+  pickup         String
+  destination    String
+  schedule       String
+  passengerCount Int
+  notes          String?
+  status         ContractStatus @default(NEW)
+  createdAt      DateTime       @default(now())
+}

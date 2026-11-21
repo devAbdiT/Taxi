@@ -1,0 +1,45 @@
+{
+  "name": "@taxiflow/api",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "prepare:deps": "npm run build -w @taxiflow/shared && prisma generate",
+    "predev": "npm run prepare:deps",
+    "dev": "tsx watch src/index.ts",
+    "prebuild": "npm run prepare:deps",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "pretypecheck": "npm run prepare:deps",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "seed": "tsx prisma/seed.ts",
+    "pretest": "npm run prepare:deps",
+    "test": "vitest run",
+    "pretest": "npm run prepare:deps",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "@taxiflow/shared": "*",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.5",
+    "jsonwebtoken": "^9.0.3",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.6.6",
+    "@types/supertest": "^7.2.1",
+    "prisma": "^7.10.1",
+    "supertest": "^7.3.2",
+    "tsx": "^4.23.15",
+    "vitest": "^5.1.1"
+  }
+}
