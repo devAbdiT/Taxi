@@ -5,7 +5,6 @@ import { ButtonLink } from "@/components/Button";
 import { Logo } from "@/components/Logo";
 import { AnimatedNumber, RouteLine } from "@/components/kit";
 import { api } from "@/lib/api";
-import { USE_MOCKS } from "@/lib/config";
 import { useT } from "@/lib/i18n";
 
 export default function HomePage() {
@@ -13,7 +12,6 @@ export default function HomePage() {
   const [waiting, setWaiting] = useState(0);
 
   useEffect(() => {
-    if (!USE_MOCKS) return;
     let stop = false;
     const load = () => {
       void api.pulse().then((pulse) => {

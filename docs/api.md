@@ -7,7 +7,7 @@ This is the contract both developers build against. The source of truth for ever
 | Topic | Rule |
 | --- | --- |
 | Base URL | `NEXT_PUBLIC_API_URL`, for example `http://localhost:4000`. No `/api` prefix. |
-| Auth | `Authorization: Bearer <token>` on every endpoint except `/health`, `/auth/register` and `/auth/login`. The token comes from register or login. |
+| Auth | `Authorization: Bearer <token>` on every endpoint except `/health`, `/auth/register`, `/auth/login`, and `/public/pulse`. `POST /dev/reset` and `GET /dev/sms` are also public, and only exist when `DEMO_MODE=true`. The token comes from register or login. |
 | Body | JSON, `Content-Type: application/json`, max 100 kB. |
 | Dates | ISO 8601 strings in UTC (`"2026-11-21T12:30:00.000Z"`). Show them as relative text ("5 min ago"), never as clock time. |
 | Ids | Opaque strings (cuid). They change on every reseed, so never hard-code them; tokens from before a reseed get 401 on `/me`. |
@@ -128,6 +128,10 @@ Response 200 `AuthResponse`: `{ "token": "eyJ...", "user": PublicUser }`
 #### GET /me
 
 Any role. Response 200 `MeResponse`: `{ "user": PublicUser }`
+
+#### GET /public/pulse
+
+Public. No token. Response 200 `PublicPulseResponse`: `{ "waitingNow": 17 }`. `waitingNow` counts WAITING entries on every route.
 
 #### GET /stations
 
@@ -409,6 +413,10 @@ DRIVER. Only while DEPARTED. Trip COMPLETED with `arrivedAt`. Taxi AT_STATION at
 No body. Response 200 `ArriveTripResponse`: `{ "trip": DriverTrip, "taxi": DriverTaxi }`
 
 Errors: `trip_not_found` (404), `not_your_trip` (403), `trip_not_departed` (409).
+
+#### GET /driver/reports
+
+DRIVER. Reports about this driver, newest first. Response 200 `DriverReportsResponse`: `{ "reports": Report[] }`. The list has no passenger phone numbers.
 
 #### POST /driver/reports/:id/respond
 

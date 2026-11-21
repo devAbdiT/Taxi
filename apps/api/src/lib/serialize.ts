@@ -1,9 +1,12 @@
 import {
+  ContractStatus,
+  ContractType,
   Language,
   RatingTag,
   ReportStatus,
   ReportType,
   type AdminReport,
+  type ContractRequest,
   type DriverTaxi,
   type DriverTrip,
   type Notification,
@@ -19,6 +22,7 @@ import type {
   Notification as DbNotification,
   QueueEntry as DbQueueEntry,
   Rating as DbRating,
+  ContractRequest as DbContractRequest,
   Report as DbReport,
   Route as DbRoute,
   Station as DbStation,
@@ -142,6 +146,21 @@ export function toRating(row: DbRating): Rating {
       return parsed.success ? [parsed.data] : [];
     }),
     comment: row.comment,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export function toContract(row: DbContractRequest): ContractRequest {
+  return {
+    id: row.id,
+    requesterId: row.requesterId,
+    type: ContractType.parse(row.type),
+    pickup: row.pickup,
+    destination: row.destination,
+    schedule: row.schedule,
+    passengerCount: row.passengerCount,
+    notes: row.notes,
+    status: ContractStatus.parse(row.status),
     createdAt: row.createdAt.toISOString(),
   };
 }

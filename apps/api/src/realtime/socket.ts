@@ -26,6 +26,11 @@ export function socketReady(): boolean {
   return io !== undefined;
 }
 
+/** Drops every open socket after a demo reset so clients reconnect and refetch. */
+export function closeOpenSockets() {
+  io?.disconnectSockets(true);
+}
+
 export function getIO(): IOServer {
   if (!io) {
     throw new Error("Socket.IO is not initialized. Call initSocket before using it.");

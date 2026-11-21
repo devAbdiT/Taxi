@@ -1,7 +1,16 @@
-import type { RespondReportRequest } from "@taxiflow/shared";
+import type { DriverReportsResponse, RespondReportRequest } from "@taxiflow/shared";
 import { prisma } from "../lib/db.js";
 import { AppError, conflict, notFound } from "../lib/errors.js";
 import { toReport } from "../lib/serialize.js";
+
+/** Reports filed about this driver. Newest first. No passenger phone numbers. */
+export async function listDriverReports(driverId: string): Promise<DriverReportsResponse> {
+  const rows = await prisma.report.findMany({
+    where: { driverId },
+    orderBy: { createdAt: "desc" },
+  });
+  return { reports: rows.map(toReport) };
+}
 
 export async function respondToReport(driverId: string, reportId: string, body: RespondReportRequest) {
   const report = await prisma.report.findUnique({ where: { id: reportId } });

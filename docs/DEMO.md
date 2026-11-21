@@ -17,4 +17,4 @@ Start `apps/web` with `NEXT_PUBLIC_USE_MOCKS=true` and `NEXT_PUBLIC_DEMO_CONTROL
 
 Set `NEXT_PUBLIC_USE_MOCKS=false`, `NEXT_PUBLIC_API_URL`, and `NEXT_PUBLIC_SOCKET_URL`.
 
-These mock helpers are demo-only and are not in `docs/api.md`: `GET /public/pulse`, `GET /driver/reports`, `GET /dev/sms`, `POST /dev/reset`. The floating demo actions call the mock store directly.
+`GET /public/pulse`, `GET /driver/reports`, `GET /dev/sms`, and `POST /dev/reset` are real API routes. The reset and SMS routes answer only when the API has `DEMO_MODE=true`. The floating demo actions still call the mock store directly, so they only change the screen while mocks are on.

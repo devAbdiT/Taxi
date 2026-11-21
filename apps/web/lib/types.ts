@@ -295,7 +295,8 @@ export interface AdminStats {
 export interface SmsMessage {
   id: string;
   to: string;
-  body: string;
+  recipientName: string;
+  text: string;
   createdAt: IsoDate;
 }
 

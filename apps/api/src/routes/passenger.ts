@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { CreateRatingRequest, CreateReportRequest } from "@taxiflow/shared";
+import { CreateContractRequest, CreateRatingRequest, CreateReportRequest } from "@taxiflow/shared";
 import { getAuth, requireAuth, requireRole } from "../middleware/auth.js";
+import { createContract } from "../services/contracts.js";
 import { createRating, createReport, listMyTrips } from "../services/passenger.js";
 
 export const passengerRouter = Router();
@@ -8,6 +9,7 @@ export const passengerRouter = Router();
 passengerRouter.use("/trips", requireAuth, requireRole("PASSENGER"));
 passengerRouter.use("/ratings", requireAuth, requireRole("PASSENGER"));
 passengerRouter.use("/reports", requireAuth, requireRole("PASSENGER"));
+passengerRouter.use("/contracts", requireAuth, requireRole("PASSENGER"));
 
 passengerRouter.get("/trips/mine", async (req, res) => {
   res.json(await listMyTrips(getAuth(req).userId));
@@ -19,4 +21,8 @@ passengerRouter.post("/ratings", async (req, res) => {
 
 passengerRouter.post("/reports", async (req, res) => {
   res.status(201).json(await createReport(getAuth(req).userId, CreateReportRequest.parse(req.body)));
+});
+
+passengerRouter.post("/contracts", async (req, res) => {
+  res.status(201).json(await createContract(getAuth(req).userId, CreateContractRequest.parse(req.body)));
 });

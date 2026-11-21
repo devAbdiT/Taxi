@@ -133,7 +133,7 @@ export const api = {
   notifications: () => get<Notification[]>("/notifications"),
   markNotificationsRead: (body: MarkNotificationsReadRequest = {}) =>
     post<{ updated: number }>("/notifications/read", body),
-  requestContract: (body: ContractRequestInput) => post<ContractRequest>("/contracts", body),
+  requestContract: (body: ContractRequestInput) => post<{ request: ContractRequest }>("/contracts", body),
 
   driverMe: () => get<DriverMe>("/driver/me"),
   driverArrive: (body: ArriveRequest) => post<DriverMe>("/driver/arrive", body),
@@ -149,7 +149,7 @@ export const api = {
   arriveTrip: (id: string) => post<TripDetail>(`/driver/trips/${id}/arrive`),
   respondToReport: (id: string, body: DriverResponseRequest) =>
     post<Report>(`/driver/reports/${id}/respond`, body),
-  driverReports: () => get<Report[]>("/driver/reports"),
+  driverReports: () => get<{ reports: Report[] }>("/driver/reports"),
   pulse: () => get<{ waitingNow: number }>("/public/pulse"),
 
   stationQueues: () => get<StationQueues>("/station/queues"),
@@ -160,5 +160,5 @@ export const api = {
   updateReport: (id: string, body: UpdateReportRequest) => patch<Report>(`/admin/reports/${id}`, body),
 
   devReset: () => post<{ ok: true }>("/dev/reset"),
-  devSms: () => get<SmsMessage[]>("/dev/sms"),
+  devSms: () => get<{ messages: SmsMessage[] }>("/dev/sms"),
 };

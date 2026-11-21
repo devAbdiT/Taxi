@@ -5,6 +5,7 @@ import { env } from "./lib/env.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.js";
 import { adminRouter } from "./routes/admin.js";
 import { authRouter } from "./routes/auth.js";
+import { devRouter } from "./routes/dev.js";
 import { driverRouter } from "./routes/driver.js";
 import { notificationsRouter } from "./routes/notifications.js";
 import { passengerRouter } from "./routes/passenger.js";
@@ -26,6 +27,7 @@ export function createApp() {
   });
 
   app.use(authRouter);
+  app.use("/dev", devRouter);
   app.use(referenceRouter);
   app.use(queueRouter);
   app.use(notificationsRouter);
