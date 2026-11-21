@@ -6,8 +6,6 @@ const rateLimitedBody: ErrorResponse = {
   message: "Too many attempts. Please wait a minute and try again.",
 };
 
-const ipKey = (ip: string | undefined) => ipKeyGenerator(ip ?? "unknown");
-
 /**
  * 10 login attempts per phone number per IP per minute. Keyed by phone as well as IP
  * because a whole demo room often shares one IP.
@@ -20,7 +18,7 @@ export const loginLimiter = rateLimit({
   message: rateLimitedBody,
   keyGenerator: (req) => {
     const phone = typeof req.body?.phone === "string" ? normalizePhone(req.body.phone) : null;
-    return `${ipKey(req.ip)}:${phone ?? "invalid"}`;
+    return `${ipKeyGenerator(req.ip ?? "127.0.0.1")}:${phone ?? "invalid"}`;
   },
 });
 
@@ -31,7 +29,7 @@ export const queueJoinLimiter = rateLimit({
   standardHeaders: "draft-8",
   legacyHeaders: false,
   message: rateLimitedBody,
-  keyGenerator: (req) => req.auth?.userId ?? ipKey(req.ip),
+  keyGenerator: (req) => req.auth?.userId ?? ipKeyGenerator(req.ip ?? "127.0.0.1"),
 });
 
 /** 10 registrations per IP per minute. */
