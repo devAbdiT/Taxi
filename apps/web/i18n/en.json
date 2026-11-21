@@ -16,6 +16,8 @@
   "nav.logout": "Log out",
   "nav.routes": "Routes",
   "nav.myQueue": "My queue",
+  "nav.trips": "Trips",
+  "nav.report": "Report",
 
   "passenger.title": "Where are you going?",
   "passenger.stepRoute": "1. Choose your route",
@@ -173,5 +175,45 @@
   "status.OPEN": "Open",
   "status.IN_REVIEW": "In review",
   "status.RESOLVED": "Resolved",
-  "status.PRIORITY": "Priority"
+  "status.PRIORITY": "Priority",
+
+  "notes.title": "Messages",
+  "notes.empty": "No messages yet.",
+  "notes.markRead": "Mark all read",
+
+  "trips.title": "Your trips",
+  "trips.empty": "You have no trips yet.",
+  "trips.rate": "Rate this trip",
+  "trips.rated": "You rated this trip",
+  "trips.stars": "{n} stars",
+  "trips.comment": "Comment, optional",
+  "trips.submit": "Send rating",
+  "trips.thanks": "Thank you. Your rating was saved.",
+  "trips.report": "Report a problem",
+
+  "tags.PUNCTUALITY": "Punctuality",
+  "tags.CLEANLINESS": "Cleanliness",
+  "tags.SAFETY": "Safety",
+  "tags.BEHAVIOR": "Behavior",
+
+  "report.title": "Report a problem",
+  "report.type": "What happened",
+  "report.description": "Tell us what happened",
+  "report.hint": "At least a short sentence.",
+  "report.trip": "Which trip, optional",
+  "report.noTrip": "Not about a trip",
+  "report.submit": "Send report",
+  "report.thanks": "Your report was sent. An administrator will review it.",
+  "report.tooShort": "Please write a little more.",
+
+  "reportType.OVERCHARGING": "Overcharging",
+  "reportType.UNSAFE_DRIVING": "Unsafe driving",
+  "reportType.DISRESPECT": "Disrespect",
+  "reportType.DISCRIMINATION": "Discrimination",
+  "reportType.LOST_PROPERTY": "Lost property",
+  "reportType.OTHER": "Something else",
+
+  "sms.title": "Simulated text messages",
+  "sms.empty": "No messages have been sent.",
+  "sms.to": "To {name}"
 }

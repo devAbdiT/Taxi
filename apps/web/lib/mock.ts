@@ -563,19 +563,29 @@ const routes: RouteDef[] = [
     handler: ({ user }) => {
       const d = load();
       const boarded = d.entries.filter((e) => e.passengerId === user.id && e.status === "BOARDED" && e.tripId);
-      return boarded
-        .map((e) => d.trips.find((t) => t.id === e.tripId))
-        .filter((t): t is MockTrip => !!t && (t.status === "DEPARTED" || t.status === "COMPLETED"))
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .map((t) => ({
-          id: t.id,
-          route: routeRef(t.routeId),
-          taxiPlate: taxiOf(t).plate,
-          status: t.status,
-          departedAt: t.departedAt,
-          arrivedAt: t.arrivedAt,
-          rated: d.ratings.some((r) => r.tripId === t.id && r.passengerId === user.id),
-        }));
+      const trips = boarded
+        .map((entry) => {
+          const trip = d.trips.find((item) => item.id === entry.tripId);
+          if (!trip || (trip.status !== "DEPARTED" && trip.status !== "COMPLETED")) return null;
+          const rated = d.ratings.some((rating) => rating.tripId === trip.id && rating.passengerId === user.id);
+          const driver = d.users.find((person) => person.id === taxiOf(trip).driverId);
+          return {
+            tripId: trip.id,
+            entryId: entry.id,
+            route: routeRef(trip.routeId),
+            status: trip.status,
+            taxiPlate: taxiOf(trip).plate,
+            driverFirstName: driver?.name.split(" ")[0] ?? "",
+            boardedAt: entry.boardedAt,
+            departedAt: trip.departedAt,
+            arrivedAt: trip.arrivedAt,
+            rated,
+            canRate: trip.status === "COMPLETED" && !rated,
+          };
+        })
+        .filter((trip) => trip !== null)
+        .sort((a, b) => (b.arrivedAt ?? b.departedAt ?? "").localeCompare(a.arrivedAt ?? a.departedAt ?? ""));
+      return { trips };
     },
   },
   {
@@ -603,7 +613,7 @@ const routes: RouteDef[] = [
         createdAt: nowIso(),
       };
       d.ratings.push(rating);
-      return created(rating);
+      return created({ rating });
     },
   },
   {
@@ -627,18 +637,20 @@ const routes: RouteDef[] = [
         createdAt: nowIso(),
       };
       d.reports.push(report);
-      return created(report);
+      return created({ report });
     },
   },
   {
     method: "GET",
     pattern: "/notifications",
     roles: "any",
-    handler: ({ user }) =>
-      load()
+    handler: ({ user }) => {
+      const notifications = load()
         .notifications.filter((n) => n.userId === user.id)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .map(({ userId: _userId, ...n }) => n),
+        .map((n) => ({ ...n, type: "SYSTEM" as const }));
+      return { notifications, unread: notifications.filter((n) => !n.read).length };
+    },
   },
   {
     method: "POST",
@@ -1000,15 +1012,21 @@ const routes: RouteDef[] = [
     roles: "public",
     handler: () => {
       const d = load();
-      return [...d.notifications]
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .slice(0, 50)
-        .map((n) => ({
-          id: n.id,
-          to: d.users.find((u) => u.id === n.userId)?.phone ?? "",
-          body: n.body,
-          createdAt: n.createdAt,
-        }));
+      return {
+        messages: [...d.notifications]
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          .slice(0, 100)
+          .map((n) => {
+            const person = d.users.find((u) => u.id === n.userId);
+            return {
+              id: n.id,
+              to: person?.phone ?? "",
+              recipientName: person?.name ?? "",
+              text: n.body,
+              createdAt: n.createdAt,
+            };
+          }),
+      };
     },
   },
 ];

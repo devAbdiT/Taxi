@@ -16,6 +16,8 @@
   "nav.logout": "ውጣ",
   "nav.routes": "መስመሮች",
   "nav.myQueue": "የእኔ ወረፋ",
+  "nav.trips": "ጉዞዎች",
+  "nav.report": "ሪፖርት",
 
   "passenger.title": "ወዴት ይሄዳሉ?",
   "passenger.stepRoute": "1. መስመርዎን ይምረጡ",
@@ -173,5 +175,45 @@
   "status.OPEN": "ክፍት",
   "status.IN_REVIEW": "በግምገማ ላይ",
   "status.RESOLVED": "ተፈቷል",
-  "status.PRIORITY": "ቅድሚያ"
+  "status.PRIORITY": "ቅድሚያ",
+
+  "notes.title": "መልዕክቶች",
+  "notes.empty": "እስካሁን መልዕክት የለም።",
+  "notes.markRead": "ሁሉንም እንደተነበበ ምልክት አድርግ",
+
+  "trips.title": "ጉዞዎችዎ",
+  "trips.empty": "እስካሁን ጉዞ የለዎትም።",
+  "trips.rate": "ይህን ጉዞ ይገምግሙ",
+  "trips.rated": "ይህን ጉዞ ገምግመዋል",
+  "trips.stars": "{n} ኮከቦች",
+  "trips.comment": "አስተያየት፣ አማራጭ",
+  "trips.submit": "ግምገማ ላክ",
+  "trips.thanks": "እናመሰግናለን። ግምገማዎ ተቀምጧል።",
+  "trips.report": "ችግር ሪፖርት ያድርጉ",
+
+  "tags.PUNCTUALITY": "ጊዜ ጠባቂነት",
+  "tags.CLEANLINESS": "ንጽህና",
+  "tags.SAFETY": "ደህንነት",
+  "tags.BEHAVIOR": "ባህሪ",
+
+  "report.title": "ችግር ሪፖርት ያድርጉ",
+  "report.type": "ምን ሆነ",
+  "report.description": "የሆነውን ይንገሩን",
+  "report.hint": "ቢያንስ አጭር ዓረፍተ ነገር።",
+  "report.trip": "የትኛው ጉዞ፣ አማራጭ",
+  "report.noTrip": "ከጉዞ ጋር አልተያያዘም",
+  "report.submit": "ሪፖርት ላክ",
+  "report.thanks": "ሪፖርትዎ ተልኳል። አስተዳዳሪ ይመለከተዋል።",
+  "report.tooShort": "እባክዎ ትንሽ ይጨምሩ።",
+
+  "reportType.OVERCHARGING": "ከመጠን በላይ ክፍያ",
+  "reportType.UNSAFE_DRIVING": "አደገኛ መንዳት",
+  "reportType.DISRESPECT": "አክብሮት ማጉደል",
+  "reportType.DISCRIMINATION": "መድልዎ",
+  "reportType.LOST_PROPERTY": "የጠፋ ንብረት",
+  "reportType.OTHER": "ሌላ",
+
+  "sms.title": "የሙከራ የጽሑፍ መልዕክቶች",
+  "sms.empty": "እስካሁን የተላከ መልዕክት የለም።",
+  "sms.to": "ለ{name}"
 }

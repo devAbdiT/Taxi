@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { Button, ButtonLink } from "@/components/Button";
+import { NotificationList } from "@/components/NotificationList";
 import { Icon } from "@/components/Icon";
 import { EmptyState, ErrorState, FormError, LoadingState } from "@/components/States";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -62,10 +63,10 @@ export default function PassengerQueuePage() {
   const route = entry?.route;
   if (!entry || !route) {
     return (
-      <EmptyState
-        title={t("queue.notInQueue")}
-        action={<ButtonLink href="/passenger">{t("queue.findRoute")}</ButtonLink>}
-      />
+      <div className="flex flex-col gap-8">
+        <EmptyState title={t("queue.notInQueue")} action={<ButtonLink href="/passenger">{t("queue.findRoute")}</ButtonLink>} />
+        <NotificationList />
+      </div>
     );
   }
 
@@ -132,6 +133,7 @@ export default function PassengerQueuePage() {
           {t("queue.leave")}
         </Button>
       )}
+      <NotificationList />
     </section>
   );
 }

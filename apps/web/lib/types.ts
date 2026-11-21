@@ -24,6 +24,7 @@ export type {
   QueueEntry,
   QueueStatus,
   Rating,
+  RatingTag,
   RegisterRequest,
   LoginRequest,
   Report,
