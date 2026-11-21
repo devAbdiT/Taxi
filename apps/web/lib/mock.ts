@@ -1,8 +1,9 @@
-// In-browser fake of the TaxiFlow API, used when NEXT_PUBLIC_USE_MOCKS=true.
+// In-browser fake of the MengedLink API, used when NEXT_PUBLIC_USE_MOCKS=true.
 // Seeded with the demo data from MASTER_PROMPT.md section 7 and saved in localStorage,
 // so other tabs see the same state after their next refresh.
 
 import type { HttpMethod } from "@/lib/api";
+import { emitLive } from "@/lib/live/bus";
 import type {
   AssistanceType,
   ContractRequest,
@@ -75,8 +76,11 @@ export interface MockResponse {
   data: unknown;
 }
 
-const STORAGE_KEY = "taxiflow.mockdb";
-const LATENCY_MS = 250;
+const STORAGE_KEY = "mengedlink.mockdb";
+/** University to Merkato is the busy line Fatuma is already parked on. */
+const UNIVERSITY_TO_MERKATO = "rt_ju_mk";
+const LATENCY_MIN_MS = 250;
+const LATENCY_MAX_MS = 600;
 const MINUTE = 60_000;
 const PASSWORD = "demo1234";
 
@@ -85,13 +89,28 @@ const nowIso = () => new Date().toISOString();
 
 function seed(): MockDb {
   const stations: Station[] = [
-    { id: "st_a", name: "Area A", nameAm: "አካባቢ ሀ" },
-    { id: "st_b", name: "Area B", nameAm: "አካባቢ ለ" },
+    { id: "st_merkato", name: "Merkato", nameAm: "መርካቶ" },
+    { id: "st_ju", name: "Jimma University", nameAm: "ጅማ ዩኒቨርሲቲ" },
+    { id: "st_awetu", name: "Awetu", nameAm: "አዌቱ" },
+    { id: "st_jiren", name: "Jiren", nameAm: "ጅረን" },
+    { id: "st_hospital", name: "University Hospital", nameAm: "ዩኒቨርሲቲ ሆስፒታል" },
+    { id: "st_hermata", name: "Hermata", nameAm: "ሄርማታ" },
+    { id: "st_bishishe", name: "Bishishe", nameAm: "ቢሺሼ" },
+    { id: "st_bus", name: "Bus station", nameAm: "አውቶቢስ ጣቢያ" },
   ];
-  const routes: MockRoute[] = [
-    { id: "rt_ab", originId: "st_a", destinationId: "st_b" },
-    { id: "rt_ba", originId: "st_b", destinationId: "st_a" },
+  const spokes: [string, string][] = [
+    ["ju", "st_ju"],
+    ["aw", "st_awetu"],
+    ["jr", "st_jiren"],
+    ["ho", "st_hospital"],
+    ["he", "st_hermata"],
+    ["bi", "st_bishishe"],
+    ["bus", "st_bus"],
   ];
+  const routes: MockRoute[] = spokes.flatMap(([code, stationId]) => [
+    { id: `rt_mk_${code}`, originId: "st_merkato", destinationId: stationId },
+    { id: `rt_${code}_mk`, originId: stationId, destinationId: "st_merkato" },
+  ]);
 
   const user = (id: string, name: string, phone: string, role: Role, stationId: string | null = null): MockUser => ({
     id,
@@ -102,27 +121,31 @@ function seed(): MockDb {
     stationId,
     password: PASSWORD,
   });
-  const firstNames = [
-    "Abebe", "Almaz", "Bekele", "Chaltu", "Dawit", "Eleni", "Fikru", "Genet", "Hana", "Kebede",
-    "Lensa", "Mekdes", "Nahom", "Rahel", "Samuel", "Selam", "Tesfaye", "Tigist", "Yonas", "Zewdu",
+  const queueNames = [
+    "Tigist Abebe", "Chaltu Gemechu", "Dawit Mekonnen", "Ayantu Tesfaye", "Fikadu Bekele",
+    "Lensa Tadesse", "Yonas Hailu", "Mekdes Alemu", "Gemechu Diriba", "Selamawit Kebede",
+    "Birhanu Tolasa", "Rahel Girma", "Nahom Desta", "Sifan Ahmed", "Samuel Worku",
+    "Eleni Assefa", "Tariku Negash", "Hawi Mohammed", "Genet Bekele", "Abdi Wakjira",
+    "Marta Solomon", "Tesfaye Chala", "Birtukan Haile", "Obsa Tadesse", "Helen Getachew",
+    "Mulugeta Dagne", "Daniel Teshome", "Zinash Bekele", "Jafar Abdela", "Meseret Wolde",
+    "Tolasa Girma", "Bethlehem Tadesse", "Kedir Aman", "Liya Mengistu", "Wondimu Bekele",
+    "Aster Fikre", "Ibsa Tamiru", "Meron Ashenafi", "Getachew Bulcha",
   ];
   const users: MockUser[] = [
-    user("u_admin", "Admin", "0911000099", "ADMIN"),
-    user("u_rep_a", "Meron Rep", "0911000011", "STATION_REP", "st_a"),
-    user("u_rep_b", "Getachew Rep", "0911000012", "STATION_REP", "st_b"),
-    user("u_d1", "Driver One", "0911000001", "DRIVER"),
-    user("u_d2", "Driver Two", "0911000002", "DRIVER"),
-    user("u_d3", "Driver Three", "0911000003", "DRIVER"),
-    user("u_p100", "Demo Passenger", "0911000100", "PASSENGER"),
-    ...firstNames.map((name, i) =>
-      user(`u_p${101 + i}`, `${name} T.`, `0911000${101 + i}`, "PASSENGER"),
-    ),
+    user("u_admin", "Selam Tadesse", "0911000099", "ADMIN"),
+    user("u_rep_a", "Meron Desta", "0911000011", "STATION_REP", "st_merkato"),
+    user("u_rep_b", "Getachew Tolosa", "0911000012", "STATION_REP", "st_ju"),
+    user("u_d1", "Kebede Alemu", "0911000001", "DRIVER"),
+    user("u_d2", "Abebe Chala", "0911000002", "DRIVER"),
+    user("u_d3", "Fatuma Ahmed", "0911000003", "DRIVER"),
+    user("u_p100", "Hana Bekele", "0911000100", "PASSENGER"),
+    ...queueNames.map((name, i) => user(`u_p${101 + i}`, name, `0911${String(100101 + i).slice(-6)}`, "PASSENGER")),
   ];
 
   const taxis: MockTaxi[] = [
-    { id: "tx_1", plate: "AA 3-10001", capacity: 14, status: "AT_STATION", driverId: "u_d1", currentStationId: "st_a" },
-    { id: "tx_2", plate: "AA 3-10002", capacity: 16, status: "OFFLINE", driverId: "u_d2", currentStationId: null },
-    { id: "tx_3", plate: "AA 3-10003", capacity: 19, status: "AT_STATION", driverId: "u_d3", currentStationId: "st_b" },
+    { id: "tx_1", plate: "OR 3-42115", capacity: 14, status: "AT_STATION", driverId: "u_d1", currentStationId: "st_merkato" },
+    { id: "tx_2", plate: "OR 2-31880", capacity: 16, status: "OFFLINE", driverId: "u_d2", currentStationId: null },
+    { id: "tx_3", plate: "OR 3-55012", capacity: 19, status: "AT_STATION", driverId: "u_d3", currentStationId: "st_ju" },
   ];
 
   const entry = (
@@ -143,18 +166,30 @@ function seed(): MockDb {
     boardedAt: null,
     tripId: null,
   });
-  const priorityByIndex: Record<number, AssistanceType> = { 2: "ELDERLY", 6: "PREGNANT", 9: "DISABILITY" };
-  const entries: MockEntry[] = [
-    ...Array.from({ length: 12 }, (_, i) =>
-      entry(`qe_ba_${i}`, `u_p${101 + i}`, "rt_ba", 40 - i * 3, priorityByIndex[i]),
-    ),
-    ...Array.from({ length: 5 }, (_, i) => entry(`qe_ab_${i}`, `u_p${113 + i}`, "rt_ab", 30 - i * 5)),
+  const lines: [string, number, AssistanceType[]][] = [
+    [UNIVERSITY_TO_MERKATO, 12, ["NONE", "NONE", "ELDERLY", "NONE", "NONE", "NONE", "PREGNANT", "NONE", "NONE", "DISABILITY", "NONE", "NONE"]],
+    ["rt_mk_ju", 6, ["NONE", "ELDERLY"]],
+    ["rt_mk_ho", 5, ["PREGNANT"]],
+    ["rt_mk_aw", 4, []],
+    ["rt_mk_bus", 5, ["NONE", "NONE", "NONE", "DISABILITY"]],
+    ["rt_jr_mk", 3, []],
+    ["rt_he_mk", 2, []],
+    ["rt_bi_mk", 2, []],
   ];
+  const entries: MockEntry[] = [];
+  let person = 0;
+  for (const [routeId, count, help] of lines) {
+    for (let i = 0; i < count; i++) {
+      const assistance = help[i] ?? "NONE";
+      entries.push(entry(`qe_${routeId}_${i}`, `u_p${101 + person}`, routeId, 45 - person, assistance));
+      person++;
+    }
+  }
 
   const pastTrip: MockTrip = {
     id: "tr_past",
     taxiId: "tx_1",
-    routeId: "rt_ab",
+    routeId: "rt_mk_ju",
     status: "COMPLETED",
     createdAt: ago(180 * MINUTE),
     departedAt: ago(170 * MINUTE),
@@ -162,7 +197,7 @@ function seed(): MockDb {
   };
   for (const [i, passengerId] of ["u_p100", "u_p118", "u_p119"].entries()) {
     entries.push({
-      ...entry(`qe_past_${i}`, passengerId, "rt_ab", 200 - i * 4),
+      ...entry(`qe_past_${i}`, passengerId, "rt_mk_ju", 200 - i * 4),
       status: "BOARDED",
       calledAt: ago(178 * MINUTE),
       boardedAt: ago(175 * MINUTE),
@@ -184,7 +219,7 @@ function seed(): MockDb {
         userId: "u_p100",
         type: "TRIP_COMPLETED",
         title: "You arrived",
-        body: "You arrived at Area B with taxi AA 3-10001. Please rate your trip.",
+        body: "You arrived at Jimma University with taxi OR 3-42115. Please rate your trip.",
         read: true,
         createdAt: ago(140 * MINUTE),
       },
@@ -197,11 +232,47 @@ function seed(): MockDb {
         tripId: pastTrip.id,
         driverId: "u_d1",
         type: "OVERCHARGING",
-        description: "The driver asked for more than the posted fare.",
+        description: "On the Merkato to Jimma University line, the driver asked for more than the fare.",
         status: "OPEN",
         driverResponse: null,
         resolutionNote: null,
         createdAt: ago(120 * MINUTE),
+      },
+      {
+        id: "rp_2",
+        reporterId: "u_p119",
+        tripId: pastTrip.id,
+        driverId: "u_d3",
+        type: "DISRESPECT",
+        description: "The driver was rude when I asked the fare at the University gate.",
+        status: "IN_REVIEW",
+        driverResponse: null,
+        resolutionNote: null,
+        createdAt: ago(90 * MINUTE),
+      },
+      {
+        id: "rp_3",
+        reporterId: "u_p120",
+        tripId: null,
+        driverId: "u_d1",
+        type: "UNSAFE_DRIVING",
+        description: "The minibus was driving too fast on the road down from Jiren.",
+        status: "OPEN",
+        driverResponse: null,
+        resolutionNote: null,
+        createdAt: ago(40 * MINUTE),
+      },
+      {
+        id: "rp_4",
+        reporterId: "u_p117",
+        tripId: pastTrip.id,
+        driverId: "u_d2",
+        type: "LOST_PROPERTY",
+        description: "I left a blue bag on the seat between Merkato and Awetu.",
+        status: "RESOLVED",
+        driverResponse: "The bag is with the Merkato station desk.",
+        resolutionNote: "Bag returned at Merkato.",
+        createdAt: ago(200 * MINUTE),
       },
     ],
     contracts: [],
@@ -461,6 +532,12 @@ const routes: RouteDef[] = [
   },
   { method: "GET", pattern: "/me", roles: "any", handler: ({ user }) => publicUser(user) },
   { method: "GET", pattern: "/stations", roles: "any", handler: () => load().stations },
+  {
+    method: "GET",
+    pattern: "/public/pulse",
+    roles: "public",
+    handler: () => ({ waitingNow: load().entries.filter((entry) => entry.status === "WAITING").length }),
+  },
   { method: "GET", pattern: "/routes", roles: "any", handler: () => load().routes.map(routeSummary) },
 
   // ----- passenger -----
@@ -547,6 +624,8 @@ const routes: RouteDef[] = [
           departedAt: t.departedAt,
           arrivedAt: t.arrivedAt,
           rated: d.ratings.some((r) => r.tripId === t.id && r.passengerId === user.id),
+          canRate: t.status === "COMPLETED" && !d.ratings.some((r) => r.tripId === t.id && r.passengerId === user.id),
+          driverFirstName: d.users.find((u) => u.id === taxiOf(t).driverId)?.name.split(" ")[0] ?? "",
         }));
     },
   },
@@ -837,6 +916,12 @@ const routes: RouteDef[] = [
     },
   },
   {
+    method: "GET",
+    pattern: "/driver/reports",
+    roles: ["DRIVER"],
+    handler: ({ user }) => load().reports.filter((report) => report.driverId === user.id),
+  },
+  {
     method: "POST",
     pattern: "/driver/reports/:id/respond",
     roles: ["DRIVER"],
@@ -924,6 +1009,9 @@ const routes: RouteDef[] = [
         tripsToday: d.trips.filter((t) => t.status !== "CANCELLED" && Date.parse(t.createdAt) >= midnight.getTime())
           .length,
         waitingNow: d.entries.filter((e) => e.status === "WAITING").length,
+        waitSamples: called.slice(-8).map((entry) =>
+          Math.max(1, Math.round((Date.parse(entry.calledAt!) - Date.parse(entry.joinedAt)) / MINUTE)),
+        ),
       };
     },
   },
@@ -1000,7 +1088,8 @@ export async function mockRequest(
   body: unknown,
   token: string | null,
 ): Promise<MockResponse> {
-  await new Promise((resolve) => setTimeout(resolve, LATENCY_MS));
+  const wait = LATENCY_MIN_MS + Math.floor(Math.random() * (LATENCY_MAX_MS - LATENCY_MIN_MS));
+  await new Promise((resolve) => setTimeout(resolve, wait));
   const cleanPath = path.split("?")[0];
 
   for (const def of routes) {
@@ -1020,7 +1109,13 @@ export async function mockRequest(
         body: (body ?? {}) as Record<string, unknown>,
         params,
       });
-      if (method !== "GET") save();
+      if (method !== "GET") {
+        save();
+        emitLive("demand:update", {});
+        emitLive("queue:update", {});
+        emitLive("trip:update", {});
+        emitLive("notification:new", {});
+      }
       return result instanceof Created
         ? { status: 201, data: structuredClone(result.data) }
         : { status: 200, data: structuredClone(result) };
@@ -1031,4 +1126,142 @@ export async function mockRequest(
     }
   }
   return { status: 404, data: { error: "not_found", message: `No mock for ${method} ${cleanPath}` } };
+}
+
+function broadcast() {
+  save();
+  emitLive("demand:update", {});
+  emitLive("queue:update", {});
+  emitLive("trip:update", {});
+  emitLive("notification:new", {});
+}
+
+/** A random extra passenger joins or leaves so counters move during a demo. */
+export function tickAmbient() {
+  const d = load();
+  const liveRoutes = [UNIVERSITY_TO_MERKATO, "rt_mk_ju", "rt_mk_ho", "rt_mk_aw", "rt_mk_bus", "rt_jr_mk"];
+  const routeId = liveRoutes[Math.floor(Math.random() * liveRoutes.length)];
+  const waiting = d.entries.filter((entry) => entry.routeId === routeId && entry.status === "WAITING");
+  if (Math.random() < 0.4 && waiting.length > 4) {
+    waiting[waiting.length - 1].status = "CANCELLED";
+  } else {
+    const id = newId("u");
+    const names = ["Hawi Tadesse", "Yonas Gemechu", "Sara Mekonnen", "Dawit Abdi", "Liya Kebede", "Nahom Tolasa"];
+    d.users.push({
+      id,
+      name: names[Math.floor(Math.random() * names.length)],
+      phone: `09${String(Math.floor(Math.random() * 1e8)).padStart(8, "0")}`,
+      role: "PASSENGER",
+      language: "en",
+      stationId: null,
+      password: PASSWORD,
+    });
+    const priority = Math.random() < 0.2;
+    d.entries.push({
+      id: newId("qe"),
+      passengerId: id,
+      routeId,
+      status: "WAITING",
+      assistance: priority ? "ELDERLY" : "NONE",
+      isPriority: priority,
+      joinedAt: nowIso(),
+      calledAt: null,
+      boardedAt: null,
+      tripId: null,
+    });
+  }
+  broadcast();
+}
+
+export function resetMock() {
+  db = null;
+  localStorage.removeItem(STORAGE_KEY);
+  emitLive("demand:update", {});
+}
+
+export function demoJoin(priority: boolean) {
+  const d = load();
+  const id = newId("u");
+  d.users.push({
+    id,
+    name: priority ? "Almaz Bekele" : "Bereket Tolasa",
+    phone: `09${String(Math.floor(Math.random() * 1e8)).padStart(8, "0")}`,
+    role: "PASSENGER",
+    language: "en",
+    stationId: null,
+    password: PASSWORD,
+  });
+  d.entries.push({
+    id: newId("qe"),
+    passengerId: id,
+    routeId: UNIVERSITY_TO_MERKATO,
+    status: "WAITING",
+    assistance: priority ? "ELDERLY" : "NONE",
+    isPriority: priority,
+    joinedAt: priority ? ago(50 * MINUTE) : nowIso(),
+    calledAt: null,
+    boardedAt: null,
+    tripId: null,
+  });
+  broadcast();
+}
+
+export function demoBumpMe() {
+  const token = localStorage.getItem("taxiflow.token");
+  const user = userFromToken(token);
+  if (!user) return;
+  const d = load();
+  const mine = d.entries.find(
+    (entry) => entry.passengerId === user.id && entry.status === "WAITING",
+  );
+  if (!mine) return;
+  const earlier = d.entries
+    .filter((entry) => entry.routeId === mine.routeId && entry.status === "WAITING" && entry.id !== mine.id)
+    .sort((a, b) => a.joinedAt.localeCompare(b.joinedAt));
+  const ahead = earlier.filter((entry) => (entry.isPriority ? 1 : 0) >= (mine.isPriority ? 1 : 0));
+  const target = ahead[0];
+  if (!target) return;
+  const joined = mine.joinedAt;
+  mine.joinedAt = new Date(new Date(target.joinedAt).getTime() - 1000).toISOString();
+  if (joined === mine.joinedAt) mine.joinedAt = ago(1000);
+  broadcast();
+}
+
+export async function demoCallNext() {
+  const token = "mock-token:u_d3";
+  const d = load();
+  const taxi = d.taxis.find((item) => item.driverId === "u_d3");
+  let trip = taxi
+    ? d.trips.find((item) => item.taxiId === taxi.id && (item.status === "LOADING" || item.status === "DEPARTED"))
+    : undefined;
+  if (!trip) {
+    const started = await mockRequest("POST", "/driver/trips/start", { routeId: UNIVERSITY_TO_MERKATO }, token);
+    trip = (started.data as { id?: string }).id
+      ? d.trips.find((item) => item.id === (started.data as { id: string }).id)
+      : undefined;
+  }
+  if (!trip || trip.status !== "LOADING") return;
+  await mockRequest("POST", `/driver/trips/${trip.id}/call`, { count: 3 }, token);
+}
+
+export async function demoCompleteTrip() {
+  const d = load();
+  const trip = d.trips.find((item) => item.status === "LOADING" || item.status === "DEPARTED");
+  if (!trip) return;
+  const taxi = d.taxis.find((item) => item.id === trip.taxiId);
+  if (!taxi) return;
+  const token = `mock-token:${taxi.driverId}`;
+  if (trip.status === "LOADING") {
+    const called = d.entries.filter((entry) => entry.tripId === trip.id && entry.status === "CALLED");
+    const target = called[0] ?? d.entries.find((entry) => entry.tripId === trip.id);
+    if (target && target.status !== "BOARDED") {
+      if (target.status !== "CALLED") {
+        target.status = "CALLED";
+        target.calledAt = nowIso();
+      }
+      await mockRequest("POST", `/driver/entries/${target.id}/board`, {}, token);
+    }
+    await mockRequest("POST", `/driver/trips/${trip.id}/depart`, {}, token);
+  }
+  await mockRequest("POST", `/driver/trips/${trip.id}/arrive`, {}, token);
 }

@@ -6,12 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "i18n:check": "node scripts/i18n-check.mjs"
   },
   "dependencies": {
+    "@taxiflow/shared": "*",
     "next": "16.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "socket.io-client": "^4.8.4",
     "swr": "^2.5.1"
   },
   "devDependencies": {

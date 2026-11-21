@@ -149,6 +149,8 @@ export const api = {
   arriveTrip: (id: string) => post<TripDetail>(`/driver/trips/${id}/arrive`),
   respondToReport: (id: string, body: DriverResponseRequest) =>
     post<Report>(`/driver/reports/${id}/respond`, body),
+  driverReports: () => get<Report[]>("/driver/reports"),
+  pulse: () => get<{ waitingNow: number }>("/public/pulse"),
 
   stationQueues: () => get<StationQueues>("/station/queues"),
   removeEntry: (entryId: string) => post<{ ok: true }>(`/station/entries/${entryId}/remove`),

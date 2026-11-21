@@ -9,7 +9,7 @@ export function LanguageSwitch() {
   const t = useT();
   const current = useLanguage();
   return (
-    <div role="group" aria-label={t("lang.label")} className="flex rounded-xl border-2 border-slate-800 p-0.5">
+    <div role="group" aria-label={t("lang.label")} className="flex rounded-full border border-line bg-cream p-0.5">
       {options.map((lang) => (
         <button
           key={lang}
@@ -17,8 +17,8 @@ export function LanguageSwitch() {
           lang={lang}
           aria-pressed={current === lang}
           onClick={() => setLanguage(lang)}
-          className={`min-h-12 rounded-lg px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400 ${
-            current === lang ? "bg-slate-800 text-white" : "text-slate-900 hover:bg-slate-100"
+          className={`min-h-12 rounded-full px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-taxi ${
+            current === lang ? "bg-cobalt text-white" : "text-ink hover:bg-sky"
           }`}
         >
           {t(`lang.${lang}`)}

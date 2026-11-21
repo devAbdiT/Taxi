@@ -1,11 +1,10 @@
-import { PassengerNav } from "@/components/PassengerNav";
+import { PhoneFrame } from "@/components/Frames";
 import { RequireRole } from "@/components/RequireRole";
 
 export default function PassengerLayout({ children }: LayoutProps<"/passenger">) {
   return (
     <RequireRole role="PASSENGER">
-      <PassengerNav />
-      {children}
+      <PhoneFrame role="passenger">{children}</PhoneFrame>
     </RequireRole>
   );
 }

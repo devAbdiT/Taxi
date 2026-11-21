@@ -15,6 +15,20 @@ export function homeFor(role: Role): string {
   return homes[role];
 }
 
+const demoPeople: Record<"PASSENGER" | "DRIVER", { id: string; name: string; phone: string }> = {
+  PASSENGER: { id: "u_p100", name: "Demo Passenger", phone: "0911000100" },
+  DRIVER: { id: "u_d1", name: "Driver One", phone: "0911000001" },
+};
+
+/** Opens the passenger or driver screens with no password check. Temporary, for the demo. */
+export async function enterAs(role: "PASSENGER" | "DRIVER", language: "en" | "am" = "en") {
+  const person = demoPeople[role];
+  await startSession({
+    token: `mock-token:${person.id}`,
+    user: { ...person, role, language, stationId: null, createdAt: new Date().toISOString() },
+  });
+}
+
 /** Store the token and prime the /me cache so the next page renders without a second request. */
 export async function startSession({ token, user }: AuthResponse) {
   setToken(token);

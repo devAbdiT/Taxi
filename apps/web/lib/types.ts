@@ -36,6 +36,7 @@ export interface User {
   role: Role;
   language: Language;
   stationId: string | null;
+  createdAt?: IsoDate;
 }
 
 export interface Station {
@@ -55,6 +56,9 @@ export interface RouteSummary extends RouteRef {
   priorityWaiting: number;
   taxisAvailable: number;
 }
+
+/** Flat route-plus-demand shape used by the dev UI. */
+export type RouteWithDemand = RouteSummary;
 
 export interface AuthResponse {
   token: string;
@@ -112,6 +116,8 @@ export interface PassengerTrip {
   departedAt: IsoDate | null;
   arrivedAt: IsoDate | null;
   rated: boolean;
+  canRate?: boolean;
+  driverFirstName?: string;
 }
 
 export interface Notification {
@@ -282,6 +288,8 @@ export interface AdminStats {
   loadFactorByRoute: RouteLoadFactor[];
   tripsToday: number;
   waitingNow: number;
+  /** Minutes, oldest to newest, for the sparkline. */
+  waitSamples?: number[];
 }
 
 export interface SmsMessage {

@@ -1,11 +1,10 @@
+import { PhoneFrame } from "@/components/Frames";
 import { RequireRole } from "@/components/RequireRole";
-import { RoleBar } from "@/components/RoleBar";
 
 export default function DriverLayout({ children }: LayoutProps<"/driver">) {
   return (
     <RequireRole role="DRIVER">
-      <RoleBar />
-      {children}
+      <PhoneFrame role="driver">{children}</PhoneFrame>
     </RequireRole>
   );
 }

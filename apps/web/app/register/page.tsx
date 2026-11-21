@@ -55,8 +55,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <section className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">{t("auth.registerTitle")}</h1>
+    <section className="mx-auto flex w-full max-w-md flex-col gap-6 rounded-[24px] bg-card p-5 shadow-card sm:p-7">
+      <h1 className="font-display text-3xl font-bold">{t("auth.registerTitle")}</h1>
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
         <Field
@@ -122,7 +122,7 @@ export default function RegisterPage() {
 
       <p className="text-center">
         {t("auth.haveAccount")}{" "}
-        <Link href="/login" className="inline-block py-3 font-semibold text-emerald-800 underline">
+        <Link href="/login" className="inline-block py-3 font-semibold text-cobalt underline">
           {t("home.login")}
         </Link>
       </p>

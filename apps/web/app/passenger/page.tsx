@@ -6,6 +6,7 @@ import { useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { Button } from "@/components/Button";
 import { ChoiceCard } from "@/components/ChoiceCard";
+import { useUser } from "@/components/RequireRole";
 import { Icon } from "@/components/Icon";
 import { EmptyState, ErrorState, FormError, LoadingState } from "@/components/States";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -25,7 +26,7 @@ function GoToQueueLink() {
   return (
     <Link
       href="/passenger/queue"
-      className="inline-flex min-h-12 items-center gap-2 font-semibold text-emerald-900 underline"
+      className="inline-flex min-h-12 items-center gap-2 font-semibold text-cobalt underline"
     >
       {t("passenger.goToQueue")}
       <Icon name="arrowRight" />
@@ -35,6 +36,7 @@ function GoToQueueLink() {
 
 export default function PassengerRoutesPage() {
   const t = useT();
+  const user = useUser();
   const lang = useLanguage();
   const router = useRouter();
   const { mutate } = useSWRConfig();
@@ -71,10 +73,11 @@ export default function PassengerRoutesPage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">{t("passenger.title")}</h1>
+      <h1 className="font-display text-3xl font-bold">{t("home.welcome", { name: user.name.split(" ")[0] })}</h1>
+      <p className="text-muted">{t("passenger.title")}</p>
 
       {activeEntry && activeRoute && (
-        <div className="flex flex-col gap-1 rounded-2xl border-2 border-emerald-600 bg-emerald-50 p-4 text-emerald-950">
+        <div className="flex flex-col gap-1 rounded-[20px] bg-go-soft p-4 text-ink">
           <p className="font-semibold">{t("passenger.inQueueBanner", { route: routeName(activeRoute, lang) })}</p>
           <GoToQueueLink />
         </div>
