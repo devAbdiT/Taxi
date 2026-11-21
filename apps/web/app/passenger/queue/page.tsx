@@ -1,0 +1,160 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import useSWR, { useSWRConfig } from "swr";
+import { Button, ButtonLink } from "@/components/Button";
+import { ProgressRing, RouteLine } from "@/components/kit";
+import { RelativeTime } from "@/components/RelativeTime";
+import { Icon } from "@/components/Icon";
+import { EmptyState, ErrorState, FormError, LoadingState } from "@/components/States";
+import { StatusBadge } from "@/components/StatusBadge";
+import { api, fetcher } from "@/lib/api";
+import { REFRESH_MS } from "@/lib/config";
+import { routeName, stationName } from "@/lib/format";
+import { useLanguage, useT } from "@/lib/i18n";
+import { useRelativeTime } from "@/lib/time";
+import type { MyQueue, Notification } from "@/lib/types";
+
+const MY_QUEUE_KEY = "/queue/me";
+
+function aheadKey(position: number) {
+  if (position <= 1) return "queue.aheadNone" as const;
+  if (position === 2) return "queue.aheadOne" as const;
+  return "queue.aheadMany" as const;
+}
+
+export default function PassengerQueuePage() {
+  const t = useT();
+  const lang = useLanguage();
+  const relative = useRelativeTime();
+  const router = useRouter();
+  const { mutate: mutateGlobal } = useSWRConfig();
+  const { data, error, mutate } = useSWR<MyQueue>(MY_QUEUE_KEY, fetcher, { refreshInterval: REFRESH_MS });
+  const notes = useSWR<Notification[]>("/notifications", fetcher, { refreshInterval: REFRESH_MS });
+
+  const [confirming, setConfirming] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [leaveError, setLeaveError] = useState<unknown>(null);
+  const calledNow = data?.entry?.status === "CALLED";
+
+  useEffect(() => {
+    if (calledNow && typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(200);
+  }, [calledNow]);
+
+  async function leave() {
+    setLeaving(true);
+    setLeaveError(null);
+    try {
+      await api.leaveQueue();
+      await mutate();
+      void mutateGlobal("/routes");
+      setConfirming(false);
+      router.push("/passenger");
+    } catch (err) {
+      setLeaveError(err);
+    } finally {
+      setLeaving(false);
+    }
+  }
+
+  if (error && !data) return <ErrorState error={error} onRetry={() => mutate()} />;
+  if (!data) return <LoadingState />;
+
+  const { entry, route, position, taxiPlate } = data;
+  if (!entry || !route) {
+    return (
+      <EmptyState
+        title={t("queue.notInQueue")}
+        action={<ButtonLink href="/passenger">{t("queue.findRoute")}</ButtonLink>}
+      />
+    );
+  }
+
+  const called = entry.status === "CALLED";
+  const ahead = Math.max(0, (position ?? 1) - 1);
+
+  return (
+    <section className="flex flex-col gap-5">
+      <h1 className="text-2xl font-bold">{t("queue.title")}</h1>
+
+      <div className="flex flex-col gap-2">
+        <p className="text-lg font-semibold">{routeName(route, lang)}</p>
+        <div className="flex flex-wrap gap-2">
+          <StatusBadge status={entry.status} />
+          {entry.isPriority && <StatusBadge status="PRIORITY" />}
+        </div>
+      </div>
+
+      <div role="status" aria-live="polite">
+        {called ? (
+          <div className="pulse-ring flex flex-col gap-2 rounded-[20px] bg-go-soft p-5 text-ink">
+            <p className="flex items-start gap-3 font-display text-2xl font-bold leading-snug">
+              <Icon name="bell" className="mt-1 size-7" />
+              {t("queue.boardNow", { plate: taxiPlate ?? "", station: stationName(route.origin, lang) })}
+            </p>
+            <p className="font-display text-3xl font-bold tracking-wide">{taxiPlate}</p>
+            <p className="text-base">{t("queue.calledHint")}</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4 rounded-[20px] bg-card p-4 shadow-card">
+            <RouteLine from={stationName(route.origin, lang)} to={stationName(route.destination, lang)} />
+            {position !== null && <ProgressRing value={position} label={t("queue.position")} />}
+            <p className="text-center text-lg font-semibold">{t(aheadKey(position ?? 1), { n: ahead })}</p>
+            <p className="text-center text-muted">{t("queue.eta", { n: ahead * 3 })}</p>
+          </div>
+        )}
+      </div>
+
+      <p className="flex items-center gap-2 text-slate-700">
+        <Icon name="clock" />
+        {t("queue.joined", { time: relative(entry.joinedAt) })}
+      </p>
+
+      {confirming ? (
+        <div className="flex flex-col gap-3 rounded-2xl border-2 border-red-300 bg-red-50 p-4">
+          <p className="text-lg font-semibold text-red-950">
+            {called && taxiPlate ? t("queue.leaveConfirmCalled", { plate: taxiPlate }) : t("queue.leaveConfirm")}
+          </p>
+          <FormError error={leaveError} />
+          <Button variant="danger" onClick={leave} loading={leaving} fullWidth>
+            {t("queue.leaveYes")}
+          </Button>
+          <Button variant="secondary" onClick={() => setConfirming(false)} disabled={leaving} fullWidth>
+            {t("queue.leaveNo")}
+          </Button>
+        </div>
+      ) : (
+        <Button variant="secondary" onClick={() => setConfirming(true)} fullWidth>
+          {t("queue.leave")}
+        </Button>
+      )}
+
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-xl font-bold">{t("queue.notifications")}</h2>
+          <Button
+            variant="secondary"
+            onClick={() => void api.markNotificationsRead().then(() => notes.mutate())}
+          >
+            {t("queue.markRead")}
+          </Button>
+        </div>
+        {(notes.data ?? []).length === 0 ? (
+          <p className="text-muted">{t("queue.noNotes")}</p>
+        ) : (
+          notes.data?.map((note) => (
+            <article key={note.id} className="rounded-[20px] border border-line bg-card p-4">
+              <p className="flex items-center gap-2 font-semibold">
+                {!note.read && <span className="size-2.5 rounded-full bg-taxi" />}
+                {note.title}
+              </p>
+              <p className="mt-1 text-sm text-muted">{note.body}</p>
+              <p className="mt-1 text-sm text-muted"><RelativeTime date={note.createdAt} /></p>
+            </article>
+          ))
+        )}
+      </section>
+    </section>
+  );
+}

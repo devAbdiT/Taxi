@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-noto-latin), var(--font-noto-ethiopic), system-ui, sans-serif;
+  --font-display: var(--font-noto-latin), var(--font-noto-ethiopic), system-ui, sans-serif;
+  --color-ink: #0e1b33;
+  --color-cobalt: #1d4e9e;
+  --color-cobalt-deep: #123267;
+  --color-sky: #e8f0fe;
+  --color-cream: #fbf8f1;
+  --color-card: #ffffff;
+  --color-line: #e6e1d6;
+  --color-muted: #6b7280;
+  --color-taxi: #f5b800;
+  --color-go: #1f9d6b;
+  --color-go-soft: #e3f5ec;
+  --color-alert: #d9473f;
+  --color-alert-soft: #fcebea;
+  --color-amber-soft: #fff3cc;
+  --shadow-card: 0 1px 2px rgba(14, 27, 51, 0.06), 0 8px 24px rgba(14, 27, 51, 0.08);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+.hero {
+  background-color: #123267;
+  background-image:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0 2px, transparent 2px 18px),
+    linear-gradient(160deg, #1d4e9e, #123267);
+  color: #fff;
+}
+
+.stage {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(245, 184, 0, 0.45), transparent 26%),
+    radial-gradient(circle at 88% 0%, rgba(232, 240, 254, 0.35), transparent 28%),
+    linear-gradient(165deg, #123267 0%, #1d4e9e 42%, #fbf8f1 42%);
+}
+
+.rise {
+  animation: rise 0.45s ease both;
+}
+
+.roll {
+  animation: roll 0.35s ease;
+}
+
+.pulse-ring {
+  box-shadow: 0 0 0 0 rgba(31, 157, 107, 0.55);
+  animation: pulse 1.6s ease-out infinite;
+}
+
+.shimmer {
+  background: linear-gradient(90deg, #efeae0 25%, #fbf8f1 50%, #efeae0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes roll {
+  from {
+    transform: translateY(6px);
+    opacity: 0.4;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  70% {
+    box-shadow: 0 0 0 12px rgba(31, 157, 107, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(31, 157, 107, 0);
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .roll,
+  .pulse-ring,
+  .shimmer {
+    animation: none;
+  }
+}

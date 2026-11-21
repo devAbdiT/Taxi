@@ -1,0 +1,19 @@
+{
+  "name": "taxiflow",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @taxiflow/api",
+    "build": "npm run build -w @taxiflow/shared && npm run build -w @taxiflow/api",
+    "build:shared": "npm run build -w @taxiflow/shared",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
