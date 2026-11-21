@@ -39,6 +39,7 @@ export default function DriverReportsPage() {
   return (
     <section className="flex flex-col gap-3">
       <h1 className="font-display text-3xl font-bold">{t("nav.reports")}</h1>
+      <div className="grid gap-3 xl:grid-cols-2">
       {list.map((report) => (
         <article key={report.id} className="rounded-[20px] bg-card p-4 shadow-card">
           <div className="flex items-center justify-between gap-2">
@@ -58,6 +59,7 @@ export default function DriverReportsPage() {
           )}
         </article>
       ))}
+      </div>
     </section>
   );
 }

@@ -5,7 +5,7 @@ import { Button } from "@/components/Button";
 import { ChoiceCard } from "@/components/ChoiceCard";
 import { Field } from "@/components/Field";
 import { FormError } from "@/components/States";
-import { PassengerNav } from "@/components/PassengerNav";
+import { AppShell } from "@/components/Frames";
 import { RequireRole } from "@/components/RequireRole";
 import { api } from "@/lib/api";
 import { useT } from "@/lib/i18n";
@@ -89,11 +89,12 @@ export default function ContractsPage() {
   const t = useT();
   return (
     <RequireRole role="PASSENGER">
-      <PassengerNav />
-      <section className="flex flex-col gap-5">
+      <AppShell role="passenger">
+      <section className="mx-auto flex w-full max-w-3xl flex-col gap-5">
         <h1 className="text-2xl font-bold">{t("contract.title")}</h1>
         <ContractForm />
       </section>
+      </AppShell>
     </RequireRole>
   );
 }

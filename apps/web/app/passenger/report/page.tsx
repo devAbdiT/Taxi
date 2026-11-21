@@ -45,7 +45,7 @@ export default function ReportPage() {
   if (!trips.data) return <LoadingState />;
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       <h1 className="font-display text-3xl font-bold">{t("report.title")}</h1>
       <div className="flex flex-wrap gap-2">
         {types.map((item) => (
@@ -78,7 +78,7 @@ export default function ReportPage() {
           ))}
         </select>
       </label>
-      <Button disabled={description.trim().length < 8} loading={sending} onClick={() => void submit()} fullWidth>
+      <Button disabled={description.trim().length < 8} loading={sending} onClick={() => void submit()}>
         {t("report.send")}
       </Button>
     </section>

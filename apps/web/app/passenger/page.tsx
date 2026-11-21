@@ -44,6 +44,7 @@ export default function PassengerRoutesPage() {
   const myQueue = useSWR<MyQueue>(MY_QUEUE_KEY, fetcher);
 
   const [routeId, setRouteId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [assistance, setAssistance] = useState<AssistanceType>("NONE");
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -70,6 +71,15 @@ export default function PassengerRoutesPage() {
 
   const activeEntry = myQueue.data?.entry;
   const activeRoute = myQueue.data?.route;
+  const query = search.trim().toLowerCase();
+  const visibleRoutes = (routes.data ?? []).filter((route) => {
+    if (!query) return true;
+    const text = [route.origin.name, route.origin.nameAm, route.destination.name, route.destination.nameAm]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return text.includes(query);
+  });
 
   return (
     <section className="flex flex-col gap-6">
@@ -83,16 +93,29 @@ export default function PassengerRoutesPage() {
         </div>
       )}
 
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-3 text-lg font-bold">{t("passenger.stepRoute")}</legend>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-semibold">{t("passenger.searchLabel")}</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t("passenger.searchPlaceholder")}
+            className="min-h-12 rounded-[14px] border-2 border-line bg-card px-4 text-base focus:outline-none focus-visible:ring-4 focus-visible:ring-taxi"
+          />
+        </label>
         {routes.error && !routes.data ? (
           <ErrorState error={routes.error} onRetry={() => routes.mutate()} />
         ) : !routes.data ? (
           <LoadingState />
         ) : routes.data.length === 0 ? (
           <EmptyState title={t("passenger.noRoutes")} />
+        ) : visibleRoutes.length === 0 ? (
+          <EmptyState title={t("passenger.noMatch")} />
         ) : (
-          routes.data.map((route) => (
+          <div className="grid gap-3 xl:grid-cols-2">{visibleRoutes.map((route) => (
             <ChoiceCard
               key={route.id}
               name="route"
@@ -122,11 +145,12 @@ export default function PassengerRoutesPage() {
                 })}
               </span>
             </ChoiceCard>
-          ))
+          ))}</div>
         )}
       </fieldset>
 
-      <fieldset className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4 xl:sticky xl:top-24">
+      <fieldset className="flex flex-col gap-3 rounded-[20px] border border-line bg-card p-4 shadow-card">
         <legend className="text-lg font-bold">{t("passenger.stepAssistance")}</legend>
         <p className="-mt-1 text-slate-700">{t("passenger.assistanceHint")}</p>
         <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
@@ -166,6 +190,8 @@ export default function PassengerRoutesPage() {
         <Button onClick={join} loading={joining} disabled={!routeId} fullWidth>
           {t("passenger.join")}
         </Button>
+      </div>
+      </div>
       </div>
     </section>
   );

@@ -21,18 +21,18 @@ export function Field({ label, hint, error, className = "", ...input }: FieldPro
         id={id}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
-        className={`min-h-12 rounded-xl border-2 bg-white px-4 text-lg focus:outline-none focus-visible:ring-4 focus-visible:ring-amber-400 ${
-          error ? "border-red-600" : "border-slate-400 focus:border-slate-800"
+        className={`min-h-12 rounded-[14px] border-2 bg-card px-4 text-lg text-ink focus:outline-none focus-visible:ring-4 focus-visible:ring-taxi ${
+          error ? "border-alert" : "border-line focus:border-cobalt"
         }`}
         {...input}
       />
       {hint && (
-        <p id={hintId} className="text-sm text-slate-700">
+        <p id={hintId} className="text-sm text-muted">
           {hint}
         </p>
       )}
       {error && (
-        <p id={errorId} className="text-sm font-medium text-red-800">
+        <p id={errorId} className="text-sm font-medium text-alert">
           {error}
         </p>
       )}

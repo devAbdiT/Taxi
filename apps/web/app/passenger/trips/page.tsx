@@ -45,6 +45,7 @@ export default function TripsPage() {
   return (
     <section className="flex flex-col gap-4">
       <h1 className="font-display text-3xl font-bold">{t("trips.title")}</h1>
+      <div className="grid gap-4 xl:grid-cols-2">
       {trips.data.map((trip) => (
         <article key={trip.id} className="rise flex flex-col gap-2 rounded-[20px] bg-card p-4 shadow-card">
           <p className="font-semibold">{routeName(trip.route, lang)}</p>
@@ -95,6 +96,7 @@ export default function TripsPage() {
           )}
         </article>
       ))}
+      </div>
     </section>
   );
 }

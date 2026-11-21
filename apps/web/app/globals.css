@@ -10,7 +10,7 @@
   --color-cream: #fbf8f1;
   --color-card: #ffffff;
   --color-line: #e6e1d6;
-  --color-muted: #6b7280;
+  --color-muted: #3e4c63;
   --color-taxi: #f5b800;
   --color-go: #1f9d6b;
   --color-go-soft: #e3f5ec;
@@ -36,17 +36,11 @@ body {
 
 .hero {
   background-color: #123267;
-  background-image:
-    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0 2px, transparent 2px 18px),
-    linear-gradient(160deg, #1d4e9e, #123267);
   color: #fff;
 }
 
 .stage {
-  background:
-    radial-gradient(circle at 12% 8%, rgba(245, 184, 0, 0.45), transparent 26%),
-    radial-gradient(circle at 88% 0%, rgba(232, 240, 254, 0.35), transparent 28%),
-    linear-gradient(165deg, #123267 0%, #1d4e9e 42%, #fbf8f1 42%);
+  background: #efeae0;
 }
 
 .rise {
@@ -111,5 +105,14 @@ body {
   .pulse-ring,
   .shimmer {
     animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

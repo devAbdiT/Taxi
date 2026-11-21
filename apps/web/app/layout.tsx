@@ -18,7 +18,7 @@ const notoEthiopic = localFont({
 
 export const metadata: Metadata = {
   title: "MengedLink",
-  description: "Shared taxi queues across Jimma.",
+  description: "Join a Jimma shared-taxi queue, watch your place, and board when your minibus is called.",
 };
 
 export const viewport: Viewport = {

@@ -25,7 +25,8 @@ export default function DriverPage() {
   const waitingOn = (routeId: string) => demand.data?.routes.find((r) => r.route.id === routeId)?.waiting ?? 0;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="grid items-start gap-5 xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
+      <div className="flex flex-col gap-5">
       <TaxiCard me={me.data} />
 
       {activeTrip ? (
@@ -36,7 +37,9 @@ export default function DriverPage() {
         taxi.currentStation &&
         demand.data && <StartLoading station={taxi.currentStation} routes={demand.data.routes} onStarted={refresh} />
       )}
+      </div>
 
+      <div className="flex flex-col gap-5">
       {demand.error && !demand.data ? (
         <ErrorState error={demand.error} onRetry={() => demand.mutate()} />
       ) : !demand.data ? (
@@ -47,6 +50,7 @@ export default function DriverPage() {
           <DemandBoard routes={demand.data.routes} currentStationId={taxi.currentStation?.id ?? null} />
         </>
       )}
+      </div>
     </div>
   );
 }

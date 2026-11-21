@@ -14,10 +14,10 @@ export function TaxiCard({ me }: { me: DriverMe }) {
   const percent = Math.min(100, Math.round((seatsUsed / taxi.capacity) * 100));
 
   return (
-    <section aria-labelledby="taxi-title" className="flex flex-col gap-3 rounded-2xl border-2 border-slate-200 bg-white p-4">
+    <section aria-labelledby="taxi-title" className="flex flex-col gap-3 rounded-[20px] border border-line bg-card p-5 shadow-card">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 id="taxi-title" className="text-sm font-semibold uppercase tracking-wide text-slate-600">
+          <h1 id="taxi-title" className="text-sm font-semibold uppercase tracking-wide text-muted">
             {t("driver.title")}
           </h1>
           <p className="text-3xl font-bold tabular-nums">{taxi.plate}</p>
@@ -43,7 +43,7 @@ export function TaxiCard({ me }: { me: DriverMe }) {
           aria-valuemax={taxi.capacity}
           aria-valuenow={seatsUsed}
           aria-label={t("driver.seats", { used: seatsUsed, capacity: taxi.capacity })}
-          className="h-3 overflow-hidden rounded-full bg-slate-200"
+          className="h-3 overflow-hidden rounded-full bg-sky"
         >
           <div className="h-full rounded-full bg-cobalt" style={{ width: `${percent}%` }} />
         </div>

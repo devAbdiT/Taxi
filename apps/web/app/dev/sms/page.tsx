@@ -15,15 +15,22 @@ export default function SmsPage() {
   if (!messages.data) return <LoadingState />;
 
   return (
-    <section className="mx-auto flex max-w-sm flex-col gap-3 rounded-[28px] border-8 border-ink bg-cream p-4">
-      <h1 className="text-center font-display text-xl font-bold">{t("sms.title")}</h1>
-      {list.map((message) => (
-        <article key={message.id} className="rounded-[18px] bg-sky p-3">
-          <p className="text-xs font-semibold text-cobalt">{t("sms.from")}</p>
-          <p className="mt-1">{message.text}</p>
-          <p className="mt-1 text-xs text-muted"><RelativeTime date={message.createdAt} /></p>
-        </article>
-      ))}
+    <section className="flex flex-col gap-4">
+      <h1 className="font-display text-3xl font-bold">{t("sms.title")}</h1>
+      {list.length === 0 ? (
+        <p className="text-muted">{t("queue.noNotes")}</p>
+      ) : (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {list.map((message) => (
+            <article key={message.id} className="rounded-[20px] border border-line bg-card p-4 shadow-card">
+              <p className="text-sm font-semibold text-cobalt">{t("sms.from")}</p>
+              <p className="mt-1 text-sm text-muted">{message.recipientName} · {message.to}</p>
+              <p className="mt-2">{message.text}</p>
+              <p className="mt-2 text-sm text-muted"><RelativeTime date={message.createdAt} /></p>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

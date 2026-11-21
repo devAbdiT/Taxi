@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/Button";
 import { useLive } from "@/hooks/useLive";
@@ -23,13 +24,15 @@ function Shell({ children }: { children: ReactNode }) {
     path.startsWith("/passenger") ||
     path.startsWith("/driver") ||
     path.startsWith("/station") ||
-    path.startsWith("/admin");
+    path.startsWith("/admin") ||
+    path.startsWith("/contracts");
   useLive();
   if (ownFrame) return <>{children}</>;
   return (
     <>
       <Header />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">{children}</main>
+      <main id="content" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">{children}</main>
+      <Footer />
     </>
   );
 }
@@ -47,9 +50,7 @@ const roles: { label: TKey; phone: string }[] = [
 function DemoPanel() {
   const t = useT();
   const toast = useToast();
-  const path = usePathname();
   const [open, setOpen] = useState(false);
-  const phone = path.startsWith("/passenger") || path.startsWith("/driver");
   if (!DEMO_CONTROLS || !USE_MOCKS) return null;
 
   async function jump(phone: string) {
@@ -59,7 +60,7 @@ function DemoPanel() {
   }
 
   return (
-    <div className={`fixed z-40 flex max-w-[min(20rem,calc(100vw-1.5rem))] flex-col gap-2 ${phone ? "bottom-24 left-1/2 w-[min(20rem,calc(100vw-1.5rem))] -translate-x-1/2 items-center" : "bottom-4 right-3 items-end"}`}>
+    <div className="fixed bottom-4 right-3 z-40 flex max-w-[min(20rem,calc(100vw-1.5rem))] flex-col items-end gap-2">
       {open && (
         <div className="rise flex w-72 flex-col gap-2 rounded-[20px] border border-line bg-card p-3 shadow-card">
           <p className="font-display text-lg font-bold">{t("demo.title")}</p>

@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { Button } from "@/components/Button";
 import { AnimatedNumber, Sparkline } from "@/components/kit";
 import { useToast } from "@/components/Providers";
-import { ErrorState, LoadingState } from "@/components/States";
+import { EmptyState, ErrorState, LoadingState } from "@/components/States";
 import { StatusBadge } from "@/components/StatusBadge";
 import { api, fetcher } from "@/lib/api";
 import { REFRESH_MS } from "@/lib/config";
@@ -20,6 +20,7 @@ export default function AdminPage() {
   const stats = useSWR<AdminStats>("/admin/stats", fetcher, { refreshInterval: REFRESH_MS });
   const reports = useSWR<Report[]>("/admin/reports", fetcher, { refreshInterval: REFRESH_MS });
   const [filter, setFilter] = useState<ReportStatus | "ALL">("ALL");
+  const [query, setQuery] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -48,7 +49,13 @@ export default function AdminPage() {
   if (!stats.data || !reports.data) return <LoadingState />;
 
   const open = reports.data.filter((report) => report.status !== "RESOLVED").length;
-  const visible = reports.data.filter((report) => filter === "ALL" || report.status === filter);
+  const needle = query.trim().toLowerCase();
+  const visible = reports.data.filter((report) => {
+    if (filter !== "ALL" && report.status !== filter) return false;
+    if (!needle) return true;
+    const text = `${t(`report.${report.type}`)} ${report.description} ${report.driverResponse ?? ""}`.toLowerCase();
+    return text.includes(needle);
+  });
   const maxLoad = Math.max(...stats.data.loadFactorByRoute.map((item) => item.loadFactor), 0.01);
 
   return (
@@ -81,18 +88,31 @@ export default function AdminPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap gap-2">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-semibold">{t("admin.searchLabel")}</span>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t("admin.searchPlaceholder")}
+            className="min-h-12 rounded-[14px] border-2 border-line bg-card px-4 focus:outline-none focus-visible:ring-4 focus-visible:ring-taxi"
+          />
+        </label>
+        <div className="flex flex-wrap gap-2" role="group" aria-label={t("admin.filterAll")}>
           {(["ALL", "OPEN", "IN_REVIEW", "RESOLVED"] as const).map((status) => (
             <button
               key={status}
               type="button"
-              className={`min-h-12 rounded-full px-4 text-sm font-semibold ${filter === status ? "bg-cobalt text-white" : "bg-card"}`}
+              aria-pressed={filter === status}
+              className={`min-h-12 rounded-full px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-taxi ${filter === status ? "bg-cobalt text-white" : "border border-line bg-card"}`}
               onClick={() => setFilter(status)}
             >
               {status === "ALL" ? t("admin.filterAll") : t(`status.${status}`)}
             </button>
           ))}
         </div>
+        {visible.length === 0 && <EmptyState title={t("admin.noReports")} />}
+        <div className="grid gap-3 xl:grid-cols-2">
         {visible.map((report) => (
           <article key={report.id} className="rounded-[20px] bg-card p-4 shadow-card">
             <div className="flex items-center justify-between gap-2">
@@ -103,12 +123,14 @@ export default function AdminPage() {
             {report.driverResponse && <p className="mt-2 text-sm text-muted">{report.driverResponse}</p>}
             {report.status !== "RESOLVED" && (
               <div className="mt-3 flex flex-col gap-2">
-                <input
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  placeholder={t("admin.note")}
-                  className="min-h-12 rounded-[14px] border border-line px-3"
-                />
+                <label className="flex flex-col gap-1.5 text-sm font-semibold">
+                  {t("admin.note")}
+                  <input
+                    value={note}
+                    onChange={(event) => setNote(event.target.value)}
+                    className="min-h-12 rounded-[14px] border-2 border-line px-3 font-normal focus:outline-none focus-visible:ring-4 focus-visible:ring-taxi"
+                  />
+                </label>
                 <div className="flex flex-wrap gap-2">
                   {report.status === "OPEN" && (
                     <Button loading={busy === report.id} onClick={() => void update(report.id, "IN_REVIEW")}>{t("admin.inReview")}</Button>
@@ -119,6 +141,7 @@ export default function AdminPage() {
             )}
           </article>
         ))}
+        </div>
       </section>
     </div>
   );
