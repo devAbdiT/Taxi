@@ -9,7 +9,7 @@ import { api, ApiError, setToken } from "@/lib/api";
 import { USE_MOCKS } from "@/lib/config";
 import { useLanguage } from "@/lib/i18n";
 import { useNow } from "@/lib/time";
-import type { RouteSummary, Station } from "@/lib/types";
+import type { RouteWithDemand, Station } from "@/lib/types";
 
 const badges: BadgeStatus[] = [
   "WAITING", "CALLED", "BOARDED", "CANCELLED", "NO_SHOW",
@@ -29,7 +29,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function DevUiPage() {
   const lang = useLanguage();
   const now = useNow();
-  const [routes, setRoutes] = useState<RouteSummary[] | null>(null);
+  const [routes, setRoutes] = useState<RouteWithDemand[] | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
 

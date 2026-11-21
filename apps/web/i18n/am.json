@@ -138,6 +138,7 @@
   "errors.generic": "ችግር ተፈጥሯል። እባክዎ እንደገና ይሞክሩ።",
   "errors.network_error": "ከአገልጋዩ ጋር መገናኘት አልተቻለም። ግንኙነትዎን አረጋግጠው እንደገና ይሞክሩ።",
   "errors.too_many_requests": "ብዙ ጊዜ ሞክረዋል። እባክዎ አንድ ደቂቃ ቆይተው እንደገና ይሞክሩ።",
+  "errors.rate_limited": "ብዙ ጊዜ ሞክረዋል። እባክዎ አንድ ደቂቃ ቆይተው እንደገና ይሞክሩ።",
   "errors.unauthorized": "እባክዎ እንደገና ይግቡ።",
   "errors.forbidden": "ይህን ገጽ የማየት ፈቃድ የለዎትም።",
   "errors.invalid_credentials": "ስልክ ቁጥር ወይም የይለፍ ቃል ተሳስቷል።",

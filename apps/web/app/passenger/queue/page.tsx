@@ -12,6 +12,7 @@ import { REFRESH_MS } from "@/lib/config";
 import { routeName, stationName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
 import { useRelativeTime } from "@/lib/time";
+import { useSocket } from "@/lib/useSocket";
 import type { MyQueue } from "@/lib/types";
 
 const MY_QUEUE_KEY = "/queue/me";
@@ -29,6 +30,10 @@ export default function PassengerQueuePage() {
   const router = useRouter();
   const { mutate: mutateGlobal } = useSWRConfig();
   const { data, error, mutate } = useSWR<MyQueue>(MY_QUEUE_KEY, fetcher, { refreshInterval: REFRESH_MS });
+  useSocket({
+    onQueue: () => void mutate(),
+    onNotification: () => void mutateGlobal("/notifications"),
+  });
 
   const [confirming, setConfirming] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -53,7 +58,8 @@ export default function PassengerQueuePage() {
   if (error && !data) return <ErrorState error={error} onRetry={() => mutate()} />;
   if (!data) return <LoadingState />;
 
-  const { entry, route, position, taxiPlate } = data;
+  const { entry, position, taxiPlate } = data;
+  const route = entry?.route;
   if (!entry || !route) {
     return (
       <EmptyState

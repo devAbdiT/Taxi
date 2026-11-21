@@ -10,12 +10,8 @@ import type { ReturnSuggestion } from "@/lib/types";
 export function ReturnCard({ suggestion }: { suggestion: ReturnSuggestion }) {
   const t = useT();
   const lang = useLanguage();
-  const { waiting, priorityWaiting, route, reason } = suggestion;
-
-  const title =
-    reason === "RETURN_TRIP"
-      ? t(countKey(waiting, "driver.returnNone", "driver.returnOne", "driver.returnMany"), { n: waiting })
-      : t("driver.fromStation", { n: waiting });
+  const { waiting, priorityWaiting, route } = suggestion;
+  const title = t(countKey(waiting, "driver.returnNone", "driver.returnOne", "driver.returnMany"), { n: waiting });
 
   return (
     <section

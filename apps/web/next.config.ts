@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  transpilePackages: ["@taxiflow/shared"],
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

@@ -138,6 +138,7 @@
   "errors.generic": "Something went wrong. Please try again.",
   "errors.network_error": "Cannot reach the server. Check your connection and try again.",
   "errors.too_many_requests": "Too many tries. Please wait a minute and try again.",
+  "errors.rate_limited": "Too many tries. Please wait a minute and try again.",
   "errors.unauthorized": "Please log in again.",
   "errors.forbidden": "You do not have access to this page.",
   "errors.invalid_credentials": "Phone number or password is wrong.",

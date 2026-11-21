@@ -13,7 +13,8 @@ import { api, ApiError, fetcher } from "@/lib/api";
 import { REFRESH_MS } from "@/lib/config";
 import { countKey, routeName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
-import type { AssistanceType, MyQueue, RouteSummary } from "@/lib/types";
+import { useSocket } from "@/lib/useSocket";
+import type { AssistanceType, MyQueue, RouteWithDemand } from "@/lib/types";
 
 const ROUTES_KEY = "/routes";
 const MY_QUEUE_KEY = "/queue/me";
@@ -38,8 +39,9 @@ export default function PassengerRoutesPage() {
   const lang = useLanguage();
   const router = useRouter();
   const { mutate } = useSWRConfig();
-  const routes = useSWR<RouteSummary[]>(ROUTES_KEY, fetcher, { refreshInterval: REFRESH_MS });
+  const routes = useSWR<RouteWithDemand[]>(ROUTES_KEY, fetcher, { refreshInterval: REFRESH_MS });
   const myQueue = useSWR<MyQueue>(MY_QUEUE_KEY, fetcher);
+  useSocket({ onDemand: () => void mutate(ROUTES_KEY) }, routes.data?.map((route) => route.id) ?? []);
 
   const [routeId, setRouteId] = useState<string | null>(null);
   const [assistance, setAssistance] = useState<AssistanceType>("NONE");
@@ -67,7 +69,7 @@ export default function PassengerRoutesPage() {
   }
 
   const activeEntry = myQueue.data?.entry;
-  const activeRoute = myQueue.data?.route;
+  const activeRoute = activeEntry?.route;
 
   return (
     <section className="flex flex-col gap-6">

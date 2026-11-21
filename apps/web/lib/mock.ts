@@ -3,30 +3,38 @@
 // so other tabs see the same state after their next refresh.
 
 import type { HttpMethod } from "@/lib/api";
+import { publishMockLive } from "@/lib/liveChannel";
 import type {
   AssistanceType,
   ContractRequest,
   DriverMe,
+  DriverTrip,
   Language,
-  Notification,
   QueueEntry,
   Rating,
   Report,
   ReportStatus,
   Role,
-  RouteRef,
   RouteSummary,
+  RouteWithDemand,
   Station,
-  StationEntry,
   TaxiStatus,
-  TripDetail,
+  TripEntry,
   TripStatus,
-  TripSummary,
   User,
 } from "@/lib/types";
 
 interface MockUser extends User {
   password: string;
+}
+interface MockNotification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body: string;
+  read: boolean;
+  createdAt: string;
 }
 interface MockRoute {
   id: string;
@@ -50,11 +58,17 @@ interface MockTrip {
   departedAt: string | null;
   arrivedAt: string | null;
 }
-interface MockEntry extends QueueEntry {
+interface MockEntry {
+  id: string;
   passengerId: string;
-}
-interface MockNotification extends Notification {
-  userId: string;
+  routeId: string;
+  status: QueueEntry["status"];
+  assistance: AssistanceType;
+  isPriority: boolean;
+  joinedAt: string;
+  calledAt: string | null;
+  boardedAt: string | null;
+  tripId: string | null;
 }
 interface MockDb {
   seq: number;
@@ -100,6 +114,7 @@ function seed(): MockDb {
     role,
     language: "en",
     stationId,
+    createdAt: nowIso(),
     password: PASSWORD,
   });
   const firstNames = [
@@ -273,7 +288,7 @@ const station = (id: string) => load().stations.find((s) => s.id === id) ?? notF
 const route = (id: string) => load().routes.find((r) => r.id === id) ?? notFound("Route");
 const firstName = (userId: string) => load().users.find((u) => u.id === userId)?.name.split(" ")[0] ?? "";
 
-function routeRef(routeId: string): RouteRef {
+function routeRef(routeId: string): RouteSummary {
   const r = route(routeId);
   return { id: r.id, origin: station(r.originId), destination: station(r.destinationId) };
 }
@@ -293,7 +308,7 @@ function positionOf(entry: MockEntry): number | null {
   return waitingInOrder(entry.routeId).findIndex((e) => e.id === entry.id) + 1;
 }
 
-function routeSummary(r: MockRoute): RouteSummary {
+function routeSummary(r: MockRoute): RouteWithDemand {
   const waiting = waitingInOrder(r.id);
   return {
     ...routeRef(r.id),
@@ -305,7 +320,19 @@ function routeSummary(r: MockRoute): RouteSummary {
   };
 }
 
-const publicEntry = ({ passengerId: _passengerId, ...rest }: MockEntry): QueueEntry => rest;
+function publicEntry(e: MockEntry): QueueEntry {
+  return {
+    id: e.id,
+    route: routeRef(e.routeId),
+    status: e.status,
+    assistance: e.assistance,
+    isPriority: e.isPriority,
+    joinedAt: e.joinedAt,
+    calledAt: e.calledAt,
+    boardedAt: e.boardedAt,
+    tripId: e.tripId,
+  };
+}
 
 const tripEntries = (tripId: string) => load().entries.filter((e) => e.tripId === tripId);
 
@@ -314,39 +341,32 @@ const seatsUsed = (tripId: string) =>
 
 const taxiOf = (trip: MockTrip) => load().taxis.find((t) => t.id === trip.taxiId) ?? notFound("Taxi");
 
-function tripSummary(trip: MockTrip): TripSummary {
-  return {
-    id: trip.id,
-    route: routeRef(trip.routeId),
-    status: trip.status,
-    createdAt: trip.createdAt,
-    departedAt: trip.departedAt,
-    arrivedAt: trip.arrivedAt,
-    seatsUsed: seatsUsed(trip.id),
-    capacity: taxiOf(trip).capacity,
-  };
-}
-
-function toStationEntry(e: MockEntry): StationEntry {
+function toTripEntry(e: MockEntry): TripEntry {
   return {
     id: e.id,
     firstName: firstName(e.passengerId),
     isPriority: e.isPriority,
-    assistance: e.assistance,
     status: e.status,
-    joinedAt: e.joinedAt,
     calledAt: e.calledAt,
-    position: positionOf(e),
+    boardedAt: e.boardedAt,
   };
 }
 
-function tripDetail(trip: MockTrip): TripDetail {
+function tripDetail(trip: MockTrip): DriverTrip {
+  const taxi = taxiOf(trip);
+  const used = seatsUsed(trip.id);
   return {
-    ...tripSummary(trip),
-    entries: tripEntries(trip.id).map((e) => {
-      const { position: _position, ...rest } = toStationEntry(e);
-      return rest;
-    }),
+    id: trip.id,
+    route: routeRef(trip.routeId),
+    status: trip.status,
+    taxiPlate: taxi.plate,
+    capacity: taxi.capacity,
+    seatsUsed: used,
+    seatsLeft: taxi.capacity - used,
+    createdAt: trip.createdAt,
+    departedAt: trip.departedAt,
+    arrivedAt: trip.arrivedAt,
+    entries: tripEntries(trip.id).map(toTripEntry),
   };
 }
 
@@ -374,7 +394,7 @@ function driverMe(driverId: string): DriverMe {
       status: taxi.status,
       currentStation: taxi.currentStationId ? station(taxi.currentStationId) : null,
     },
-    activeTrip: trip ? tripSummary(trip) : null,
+    activeTrip: trip ? tripDetail(trip) : null,
     seatsUsed: used,
     seatsLeft: taxi.capacity - used,
   };
@@ -443,7 +463,16 @@ const routes: RouteDef[] = [
       const d = load();
       if (d.users.some((u) => u.phone === phone)) fail(409, "phone_taken", "Phone already registered");
       const language: Language = body.language === "am" ? "am" : "en";
-      const user: MockUser = { id: newId("u"), name, phone, role: "PASSENGER", language, stationId: null, password };
+      const user: MockUser = {
+        id: newId("u"),
+        name,
+        phone,
+        role: "PASSENGER",
+        language,
+        stationId: null,
+        createdAt: nowIso(),
+        password,
+      };
       d.users.push(user);
       return created({ token: `mock-token:${user.id}`, user: publicUser(user) });
     },
@@ -459,9 +488,9 @@ const routes: RouteDef[] = [
       return { token: `mock-token:${user.id}`, user: publicUser(user) };
     },
   },
-  { method: "GET", pattern: "/me", roles: "any", handler: ({ user }) => publicUser(user) },
-  { method: "GET", pattern: "/stations", roles: "any", handler: () => load().stations },
-  { method: "GET", pattern: "/routes", roles: "any", handler: () => load().routes.map(routeSummary) },
+  { method: "GET", pattern: "/me", roles: "any", handler: ({ user }) => ({ user: publicUser(user) }) },
+  { method: "GET", pattern: "/stations", roles: "any", handler: () => ({ stations: load().stations }) },
+  { method: "GET", pattern: "/routes", roles: "any", handler: () => ({ routes: load().routes.map(routeSummary) }) },
 
   // ----- passenger -----
   {
@@ -501,12 +530,11 @@ const routes: RouteDef[] = [
       const entry = d.entries.find(
         (e) => e.passengerId === user.id && (e.status === "WAITING" || e.status === "CALLED"),
       );
-      if (!entry) return { entry: null, position: null, route: null, taxiPlate: null };
+      if (!entry) return { entry: null, position: null, taxiPlate: null };
       const trip = d.trips.find((t) => t.id === entry.tripId);
       return {
         entry: publicEntry(entry),
         position: positionOf(entry),
-        route: routeSummary(route(entry.routeId)),
         taxiPlate: entry.status === "CALLED" && trip ? taxiOf(trip).plate : null,
       };
     },
@@ -525,7 +553,7 @@ const routes: RouteDef[] = [
         notify(taxiOf(trip).driverId, "PASSENGER_LEFT", "Seat freed", `${firstName(user.id)} left the queue. A seat is free.`);
       }
       entry.status = "CANCELLED";
-      return publicEntry(entry);
+      return { entry: publicEntry(entry) };
     },
   },
   {
@@ -571,7 +599,7 @@ const routes: RouteDef[] = [
         passengerId: user.id,
         stars,
         tags: Array.isArray(body.tags) ? (body.tags as Rating["tags"]) : [],
-        comment: typeof body.comment === "string" ? body.comment : undefined,
+        comment: typeof body.comment === "string" ? body.comment : null,
         createdAt: nowIso(),
       };
       d.ratings.push(rating);
@@ -641,7 +669,7 @@ const routes: RouteDef[] = [
         destination: requireText(body.destination, "destination"),
         schedule: requireText(body.schedule, "schedule"),
         passengerCount: Number(body.passengerCount) || 1,
-        notes: typeof body.notes === "string" ? body.notes : undefined,
+        notes: typeof body.notes === "string" ? body.notes : null,
         status: "NEW",
         createdAt: nowIso(),
       };
@@ -677,23 +705,23 @@ const routes: RouteDef[] = [
       const d = load();
       const taxi = taxiForDriver(user.id);
       const demand = d.routes
-        .map((r) => {
-          const s = routeSummary(r);
-          return { route: routeRef(r.id), waiting: s.waiting, priorityWaiting: s.priorityWaiting, originId: r.originId };
-        })
+        .map((r) => ({
+          ...routeSummary(r),
+          highlighted: taxi.status === "AT_STATION" && r.originId === taxi.currentStationId,
+        }))
         .sort((a, b) => b.waiting - a.waiting);
 
       // Only with an active trip: the reverse of its route (matches the backend contract).
       const trip = activeTripOf(taxi);
       const outbound = trip ? route(trip.routeId) : undefined;
       const reverse = outbound
-        ? demand.find((x) => x.route.origin.id === outbound.destinationId && x.route.destination.id === outbound.originId)
+        ? demand.find((x) => x.origin.id === outbound.destinationId && x.destination.id === outbound.originId)
         : undefined;
-      const returnSuggestion = reverse ? { ...reverse, reason: "RETURN_TRIP" as const } : null;
-      const strip = <T extends { originId: string }>({ originId: _originId, ...rest }: T) => rest;
       return {
-        routes: demand.map(strip),
-        returnSuggestion: returnSuggestion ? strip(returnSuggestion) : null,
+        routes: demand,
+        returnSuggestion: reverse
+          ? { route: routeRef(reverse.id), waiting: reverse.waiting, priorityWaiting: reverse.priorityWaiting }
+          : null,
       };
     },
   },
@@ -718,14 +746,14 @@ const routes: RouteDef[] = [
       };
       load().trips.push(trip);
       taxi.status = "LOADING";
-      return created(tripDetail(trip));
+      return created({ trip: tripDetail(trip) });
     },
   },
   {
     method: "GET",
     pattern: "/driver/trips/:id",
     roles: ["DRIVER"],
-    handler: ({ user, params }) => tripDetail(ownTrip(user.id, params.id)),
+    handler: ({ user, params }) => ({ trip: tripDetail(ownTrip(user.id, params.id)) }),
   },
   {
     method: "POST",
@@ -746,7 +774,8 @@ const routes: RouteDef[] = [
         entry.tripId = trip.id;
         notify(entry.passengerId, "CALLED", "Board now", `Taxi ${taxi.plate} is ready at ${s.name}. Board now.`);
       }
-      return tripDetail(trip);
+      const detail = tripDetail(trip);
+      return { trip: detail, called: detail.entries.filter((e) => e.status === "CALLED") };
     },
   },
   {
@@ -757,7 +786,7 @@ const routes: RouteDef[] = [
       const { entry, trip } = manageableEntry(user, params.id);
       entry.status = "BOARDED";
       entry.boardedAt = nowIso();
-      return tripDetail(trip);
+      return { entry: toTripEntry(entry), trip: tripDetail(trip) };
     },
   },
   {
@@ -768,7 +797,7 @@ const routes: RouteDef[] = [
       const { entry, trip } = manageableEntry(user, params.id);
       entry.status = "NO_SHOW";
       notify(entry.passengerId, "NO_SHOW", "Missed taxi", `You missed taxi ${taxiOf(trip).plate}. Join the queue again.`);
-      return tripDetail(trip);
+      return { entry: toTripEntry(entry), trip: tripDetail(trip) };
     },
   },
   {
@@ -788,7 +817,7 @@ const routes: RouteDef[] = [
       const taxi = taxiOf(trip);
       taxi.status = "EN_ROUTE";
       taxi.currentStationId = null;
-      return tripDetail(trip);
+      return { trip: tripDetail(trip) };
     },
   },
   {
@@ -807,7 +836,7 @@ const routes: RouteDef[] = [
       }
       trip.status = "CANCELLED";
       taxiOf(trip).status = "AT_STATION";
-      return tripDetail(trip);
+      return { trip: tripDetail(trip) };
     },
   },
   {
@@ -833,7 +862,7 @@ const routes: RouteDef[] = [
           );
         }
       }
-      return tripDetail(trip);
+      return { trip: tripDetail(trip), taxi: driverMe(user.id).taxi };
     },
   },
   {
@@ -865,7 +894,15 @@ const routes: RouteDef[] = [
             entries: [
               ...d.entries.filter((e) => e.routeId === r.id && e.status === "CALLED"),
               ...waitingInOrder(r.id),
-            ].map(toStationEntry),
+            ].map((e) => ({
+              id: e.id,
+              firstName: firstName(e.passengerId),
+              isPriority: e.isPriority,
+              status: e.status,
+              position: positionOf(e),
+              joinedAt: e.joinedAt,
+              tripId: e.tripId,
+            })),
           })),
         taxis: d.taxis
           .filter((t) => t.currentStationId === s.id)
@@ -988,6 +1025,59 @@ function match(pattern: string, path: string): Record<string, string> | null {
   return params;
 }
 
+/** Tell other tabs the queue moved, the same events the real server sends over Socket.IO. */
+function publishQueueEffects() {
+  const d = load();
+  for (const r of d.routes) {
+    const summary = routeSummary(r);
+    publishMockLive({
+      event: "demand:update",
+      payload: { routeId: r.id, waiting: summary.waiting, priorityWaiting: summary.priorityWaiting },
+    });
+  }
+  for (const entry of d.entries) {
+    if (entry.status !== "WAITING" && entry.status !== "CALLED") continue;
+    const trip = d.trips.find((item) => item.id === entry.tripId);
+    publishMockLive({
+      event: "queue:update",
+      payload: {
+        entryId: entry.id,
+        status: entry.status,
+        position: positionOf(entry),
+        taxiPlate: entry.status === "CALLED" && trip ? taxiOf(trip).plate : null,
+      },
+    });
+  }
+  const newest = [...d.notifications].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  if (newest) {
+    publishMockLive({
+      event: "notification:new",
+      payload: {
+        id: newest.id,
+        userId: newest.userId,
+        type: "SYSTEM",
+        title: newest.title,
+        body: newest.body,
+        read: newest.read,
+        createdAt: newest.createdAt,
+      },
+    });
+  }
+  const active = d.trips.find((trip) => trip.status === "LOADING" || trip.status === "DEPARTED");
+  if (active) {
+    const taxi = taxiOf(active);
+    publishMockLive({
+      event: "trip:update",
+      payload: {
+        tripId: active.id,
+        status: active.status,
+        seatsUsed: seatsUsed(active.id),
+        capacity: taxi.capacity,
+      },
+    });
+  }
+}
+
 function userFromToken(token: string | null): MockUser | null {
   if (!token?.startsWith("mock-token:")) return null;
   const id = token.slice("mock-token:".length);
@@ -1020,7 +1110,10 @@ export async function mockRequest(
         body: (body ?? {}) as Record<string, unknown>,
         params,
       });
-      if (method !== "GET") save();
+      if (method !== "GET") {
+        save();
+        publishQueueEffects();
+      }
       return result instanceof Created
         ? { status: 201, data: structuredClone(result.data) }
         : { status: 200, data: structuredClone(result) };
