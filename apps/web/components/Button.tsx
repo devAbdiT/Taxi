@@ -2,17 +2,18 @@ import Link from "next/link";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Icon } from "@/components/Icon";
 
-type Variant = "primary" | "secondary" | "danger";
+type Variant = "primary" | "secondary" | "danger" | "accent";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-emerald-700 text-white hover:bg-emerald-800 active:bg-emerald-900",
-  secondary: "border-2 border-slate-800 bg-white text-slate-900 hover:bg-slate-100 active:bg-slate-200",
-  danger: "bg-red-700 text-white hover:bg-red-800 active:bg-red-900",
+  primary: "bg-cobalt text-white hover:bg-cobalt-deep active:scale-[.98]",
+  secondary: "border-2 border-line bg-card text-ink hover:bg-sky active:scale-[.98]",
+  danger: "bg-alert text-white hover:bg-alert/90 active:scale-[.98]",
+  accent: "bg-taxi text-ink hover:brightness-95 active:scale-[.98]",
 };
 
 const base =
-  "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 py-3 text-base font-semibold " +
-  "transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400 " +
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] px-5 py-3 text-base font-semibold " +
+  "transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-taxi " +
   "disabled:cursor-not-allowed disabled:opacity-60";
 
 interface CommonProps {

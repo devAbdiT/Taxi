@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
+import { Logo } from "@/components/Logo";
+import { LiveIndicator } from "@/components/kit";
 import { USE_MOCKS } from "@/lib/config";
 import { useLanguage, useT } from "@/lib/i18n";
 
@@ -15,16 +17,18 @@ export function Header() {
   }, [lang]);
 
   return (
-    <header className="border-b-2 border-slate-200 bg-white">
-      <div className="mx-auto flex w-full max-w-xl items-center justify-between gap-3 px-4 py-2">
-        <Link href="/" className="flex min-h-12 flex-col justify-center rounded-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-400">
-          <span className="text-xl font-bold leading-tight text-emerald-800">{t("app.name")}</span>
-          <span className="text-sm leading-tight text-slate-700">{t("app.tagline")}</span>
+    <header className="border-b border-line bg-card">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-2">
+        <Link href="/" aria-label="MengedLink" className="flex min-h-12 items-center rounded-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-taxi">
+          <Logo className="h-14 w-auto sm:h-16" priority />
         </Link>
-        <LanguageSwitch />
+        <div className="flex items-center gap-2">
+          {USE_MOCKS && <LiveIndicator />}
+          <LanguageSwitch />
+        </div>
       </div>
       {USE_MOCKS && (
-        <p className="bg-amber-100 px-4 py-1 text-center text-xs font-semibold text-amber-950">
+        <p className="bg-amber-soft px-4 py-1 text-center text-xs font-semibold text-ink">
           {t("app.demoData")}
         </p>
       )}

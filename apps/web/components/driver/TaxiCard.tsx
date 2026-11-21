@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/Icon";
+import { SeatGrid } from "@/components/kit";
 import { StatusBadge } from "@/components/StatusBadge";
 import { stationName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
@@ -44,8 +45,9 @@ export function TaxiCard({ me }: { me: DriverMe }) {
           aria-label={t("driver.seats", { used: seatsUsed, capacity: taxi.capacity })}
           className="h-3 overflow-hidden rounded-full bg-slate-200"
         >
-          <div className="h-full rounded-full bg-emerald-700" style={{ width: `${percent}%` }} />
+          <div className="h-full rounded-full bg-cobalt" style={{ width: `${percent}%` }} />
         </div>
+        <SeatGrid used={seatsUsed} capacity={taxi.capacity} />
       </div>
     </section>
   );

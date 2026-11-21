@@ -50,7 +50,7 @@ export function TripPanel({ tripId, waiting, onChanged }: TripPanelProps) {
   if (!trip) return <LoadingState />;
 
   const loading = trip.status === "LOADING";
-  const seatsLeft = trip.seatsLeft;
+  const seatsLeft = trip.capacity - trip.seatsUsed;
   const boarded = trip.entries.filter((e) => e.status === "BOARDED").length;
   const stillCalled = trip.entries.filter((e) => e.status === "CALLED").length;
   const destination = stationName(trip.route.destination, lang);

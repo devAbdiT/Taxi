@@ -1,131 +1,100 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import useSWR from "swr";
 import { Button } from "@/components/Button";
-import { Field } from "@/components/Field";
-import { EmptyState, ErrorState, FormError, LoadingState } from "@/components/States";
-import { StatusBadge } from "@/components/StatusBadge";
+import { useToast } from "@/components/Providers";
+import { EmptyState, ErrorState, LoadingState } from "@/components/States";
+import { RelativeTime } from "@/components/RelativeTime";
 import { api, fetcher } from "@/lib/api";
 import { routeName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
 import type { PassengerTrip, RatingTag } from "@/lib/types";
 
-const TAGS: RatingTag[] = ["PUNCTUALITY", "CLEANLINESS", "SAFETY", "BEHAVIOR"];
-
-function RatingForm({ trip, onSaved }: { trip: PassengerTrip; onSaved: () => void }) {
-  const t = useT();
-  const [stars, setStars] = useState(5);
-  const [tags, setTags] = useState<RatingTag[]>([]);
-  const [comment, setComment] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-
-  async function submit() {
-    setSaving(true);
-    setError(null);
-    try {
-      await api.rate({ tripId: trip.tripId, stars, tags, comment: comment.trim() || undefined });
-      onSaved();
-    } catch (err) {
-      setError(err);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-5 gap-2">
-        {[1, 2, 3, 4, 5].map((value) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={stars === value}
-            aria-label={t("trips.stars", { n: value })}
-            onClick={() => setStars(value)}
-            className={`min-h-12 rounded-xl border-2 text-lg font-bold ${
-              stars === value ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white"
-            }`}
-          >
-            {value}
-          </button>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {TAGS.map((tag) => {
-          const on = tags.includes(tag);
-          return (
-            <button
-              key={tag}
-              type="button"
-              aria-pressed={on}
-              onClick={() => setTags(on ? tags.filter((item) => item !== tag) : [...tags, tag])}
-              className={`min-h-12 rounded-full border-2 px-4 font-semibold ${
-                on ? "border-emerald-700 bg-emerald-700 text-white" : "border-slate-300 bg-white"
-              }`}
-            >
-              {t(`tags.${tag}`)}
-            </button>
-          );
-        })}
-      </div>
-      <Field label={t("trips.comment")} value={comment} onChange={(event) => setComment(event.target.value)} />
-      <FormError error={error} />
-      <Button onClick={submit} loading={saving} fullWidth>
-        {t("trips.submit")}
-      </Button>
-    </div>
-  );
-}
+const tags: RatingTag[] = ["punctuality", "cleanliness", "safety", "behavior"];
 
 export default function TripsPage() {
   const t = useT();
   const lang = useLanguage();
-  const { data, error, mutate } = useSWR<PassengerTrip[]>("/trips/mine", fetcher);
-  const [open, setOpen] = useState<string | null>(null);
+  const toast = useToast();
+  const trips = useSWR<PassengerTrip[]>("/trips/mine", fetcher);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [stars, setStars] = useState(5);
+  const [picked, setPicked] = useState<RatingTag[]>([]);
+  const [comment, setComment] = useState("");
+  const [sending, setSending] = useState(false);
 
-  if (error && !data) return <ErrorState error={error} onRetry={() => mutate()} />;
-  if (!data) return <LoadingState />;
-  if (data.length === 0) return <EmptyState title={t("trips.empty")} />;
+  async function submit(tripId: string) {
+    setSending(true);
+    try {
+      await api.rate({ tripId, stars, tags: picked, comment: comment || undefined });
+      toast(t("trips.thanks"));
+      setOpenId(null);
+      await trips.mutate();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : t("common.error"));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  if (trips.error && !trips.data) return <ErrorState error={trips.error} onRetry={() => trips.mutate()} />;
+  if (!trips.data) return <LoadingState />;
+  if (trips.data.length === 0) return <EmptyState title={t("trips.empty")} />;
 
   return (
     <section className="flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">{t("trips.title")}</h1>
-      <ul className="flex flex-col gap-3">
-        {data.map((trip) => (
-          <li key={trip.tripId} className="flex flex-col gap-3 rounded-2xl border-2 border-slate-200 bg-white p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-lg font-semibold">{routeName(trip.route, lang)}</p>
-              <StatusBadge status={trip.status} />
+      <h1 className="font-display text-3xl font-bold">{t("trips.title")}</h1>
+      {trips.data.map((trip) => (
+        <article key={trip.id} className="rise flex flex-col gap-2 rounded-[20px] bg-card p-4 shadow-card">
+          <p className="font-semibold">{routeName(trip.route, lang)}</p>
+          <p className="text-sm text-muted">
+            {trip.driverFirstName} · {trip.taxiPlate}
+            {trip.arrivedAt && <> · <RelativeTime date={trip.arrivedAt} /></>}
+          </p>
+          <p className="text-sm font-semibold">{t(`status.${trip.status}`)}</p>
+          {trip.rated && <p className="text-sm font-semibold text-go">{t("trips.rated")}</p>}
+          {trip.canRate && openId !== trip.id && (
+            <Button onClick={() => setOpenId(trip.id)} fullWidth>{t("trips.rate")}</Button>
+          )}
+          {openId === trip.id && (
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`min-h-12 min-w-12 rounded-full text-xl ${value <= stars ? "bg-taxi" : "bg-line"}`}
+                    onClick={() => setStars(value)}
+                    aria-label={String(value)}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className={`min-h-12 rounded-full px-4 text-sm font-semibold ${picked.includes(tag) ? "bg-cobalt text-white" : "bg-sky"}`}
+                    onClick={() => setPicked((current) => current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag])}
+                  >
+                    {t(`trips.${tag}`)}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+                placeholder={t("trips.comment")}
+                className="min-h-24 rounded-[14px] border border-line p-3"
+              />
+              <Button loading={sending} onClick={() => void submit(trip.id)} fullWidth>{t("trips.submit")}</Button>
             </div>
-            <p className="text-slate-700">
-              {trip.taxiPlate} · {trip.driverFirstName}
-            </p>
-            {trip.rated ? (
-              <p className="font-semibold text-emerald-800">{t("trips.rated")}</p>
-            ) : trip.canRate ? (
-              open === trip.tripId ? (
-                <RatingForm
-                  trip={trip}
-                  onSaved={() => {
-                    setOpen(null);
-                    void mutate();
-                  }}
-                />
-              ) : (
-                <Button onClick={() => setOpen(trip.tripId)} fullWidth>
-                  {t("trips.rate")}
-                </Button>
-              )
-            ) : null}
-            <Link href={`/passenger/report?tripId=${trip.tripId}`} className="min-h-12 py-3 font-semibold text-emerald-800 underline">
-              {t("trips.report")}
-            </Link>
-          </li>
-        ))}
-      </ul>
+          )}
+        </article>
+      ))}
     </section>
   );
 }

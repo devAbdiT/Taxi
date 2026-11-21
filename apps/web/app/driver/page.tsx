@@ -22,7 +22,7 @@ export default function DriverPage() {
   const { taxi, activeTrip } = me.data;
   const canArrive = !activeTrip && (taxi.status === "OFFLINE" || taxi.status === "EN_ROUTE");
   const refresh = () => Promise.all([me.mutate(), demand.mutate()]);
-  const waitingOn = (routeId: string) => demand.data?.routes.find((r) => r.id === routeId)?.waiting ?? 0;
+  const waitingOn = (routeId: string) => demand.data?.routes.find((r) => r.route.id === routeId)?.waiting ?? 0;
 
   return (
     <div className="flex flex-col gap-5">

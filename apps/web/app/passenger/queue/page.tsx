@@ -1,9 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { Button, ButtonLink } from "@/components/Button";
+import { ProgressRing, RouteLine } from "@/components/kit";
+import { RelativeTime } from "@/components/RelativeTime";
 import { Icon } from "@/components/Icon";
 import { EmptyState, ErrorState, FormError, LoadingState } from "@/components/States";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -12,7 +14,7 @@ import { REFRESH_MS } from "@/lib/config";
 import { routeName, stationName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
 import { useRelativeTime } from "@/lib/time";
-import type { MyQueue } from "@/lib/types";
+import type { MyQueue, Notification } from "@/lib/types";
 
 const MY_QUEUE_KEY = "/queue/me";
 
@@ -29,10 +31,16 @@ export default function PassengerQueuePage() {
   const router = useRouter();
   const { mutate: mutateGlobal } = useSWRConfig();
   const { data, error, mutate } = useSWR<MyQueue>(MY_QUEUE_KEY, fetcher, { refreshInterval: REFRESH_MS });
+  const notes = useSWR<Notification[]>("/notifications", fetcher, { refreshInterval: REFRESH_MS });
 
   const [confirming, setConfirming] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [leaveError, setLeaveError] = useState<unknown>(null);
+  const calledNow = data?.entry?.status === "CALLED";
+
+  useEffect(() => {
+    if (calledNow && typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(200);
+  }, [calledNow]);
 
   async function leave() {
     setLeaving(true);
@@ -53,8 +61,7 @@ export default function PassengerQueuePage() {
   if (error && !data) return <ErrorState error={error} onRetry={() => mutate()} />;
   if (!data) return <LoadingState />;
 
-  const { entry, position, taxiPlate } = data;
-  const route = entry?.route;
+  const { entry, route, position, taxiPlate } = data;
   if (!entry || !route) {
     return (
       <EmptyState
@@ -65,6 +72,7 @@ export default function PassengerQueuePage() {
   }
 
   const called = entry.status === "CALLED";
+  const ahead = Math.max(0, (position ?? 1) - 1);
 
   return (
     <section className="flex flex-col gap-5">
@@ -80,26 +88,20 @@ export default function PassengerQueuePage() {
 
       <div role="status" aria-live="polite">
         {called ? (
-          <div className="flex flex-col gap-2 rounded-2xl border-4 border-blue-600 bg-blue-50 p-5 text-blue-950">
-            <p className="flex items-start gap-3 text-2xl font-bold leading-snug">
+          <div className="pulse-ring flex flex-col gap-2 rounded-[20px] bg-go-soft p-5 text-ink">
+            <p className="flex items-start gap-3 font-display text-2xl font-bold leading-snug">
               <Icon name="bell" className="mt-1 size-7" />
               {t("queue.boardNow", { plate: taxiPlate ?? "", station: stationName(route.origin, lang) })}
             </p>
+            <p className="font-display text-3xl font-bold tracking-wide">{taxiPlate}</p>
             <p className="text-base">{t("queue.calledHint")}</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
-            <p className="flex items-start gap-2 rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-amber-950">
-              <Icon name="clock" className="mt-0.5" />
-              {t("queue.waitingBanner")}
-            </p>
-            {position !== null && (
-              <div className="flex flex-col items-center gap-1 rounded-2xl border-2 border-slate-200 bg-white py-8">
-                <p className="text-lg text-slate-700">{t("queue.position")}</p>
-                <p className="text-8xl font-bold leading-none tabular-nums text-emerald-800">{position}</p>
-                <p className="mt-2 text-lg font-semibold">{t(aheadKey(position), { n: position - 1 })}</p>
-              </div>
-            )}
+          <div className="flex flex-col gap-4 rounded-[20px] bg-card p-4 shadow-card">
+            <RouteLine from={stationName(route.origin, lang)} to={stationName(route.destination, lang)} />
+            {position !== null && <ProgressRing value={position} label={t("queue.position")} />}
+            <p className="text-center text-lg font-semibold">{t(aheadKey(position ?? 1), { n: ahead })}</p>
+            <p className="text-center text-muted">{t("queue.eta", { n: ahead * 3 })}</p>
           </div>
         )}
       </div>
@@ -127,6 +129,32 @@ export default function PassengerQueuePage() {
           {t("queue.leave")}
         </Button>
       )}
+
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-xl font-bold">{t("queue.notifications")}</h2>
+          <Button
+            variant="secondary"
+            onClick={() => void api.markNotificationsRead().then(() => notes.mutate())}
+          >
+            {t("queue.markRead")}
+          </Button>
+        </div>
+        {(notes.data ?? []).length === 0 ? (
+          <p className="text-muted">{t("queue.noNotes")}</p>
+        ) : (
+          notes.data?.map((note) => (
+            <article key={note.id} className="rounded-[20px] border border-line bg-card p-4">
+              <p className="flex items-center gap-2 font-semibold">
+                {!note.read && <span className="size-2.5 rounded-full bg-taxi" />}
+                {note.title}
+              </p>
+              <p className="mt-1 text-sm text-muted">{note.body}</p>
+              <p className="mt-1 text-sm text-muted"><RelativeTime date={note.createdAt} /></p>
+            </article>
+          ))
+        )}
+      </section>
     </section>
   );
 }

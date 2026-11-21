@@ -1,16 +1,15 @@
 import { API_URL, USE_MOCKS } from "@/lib/config";
 import type {
-  AdminStatsResponse,
+  AdminStats,
+  ApiErrorBody,
+  ArriveRequest,
   AuthResponse,
   CallPassengersRequest,
   ContractRequest,
-  CreateContractRequest,
-  CreateRatingRequest,
-  CreateReportRequest,
-  DriverArriveRequest,
+  ContractRequestInput,
   DriverDemand,
   DriverMe,
-  ErrorResponse,
+  DriverResponseRequest,
   JoinQueueRequest,
   JoinQueueResponse,
   LoginRequest,
@@ -20,14 +19,15 @@ import type {
   PassengerTrip,
   QueueEntry,
   Rating,
+  RatingRequest,
   RegisterRequest,
   Report,
-  RespondReportRequest,
-  RouteWithDemand,
+  ReportRequest,
+  RouteSummary,
   SmsMessage,
   StartTripRequest,
   Station,
-  StationQueuesResponse,
+  StationQueues,
   TripDetail,
   UpdateReportRequest,
   User,
@@ -104,37 +104,10 @@ export async function request<T>(method: HttpMethod, path: string, body?: unknow
     redirectToLogin();
   }
   if (status >= 400) {
-    const err = (data ?? {}) as Partial<ErrorResponse>;
+    const err = (data ?? {}) as Partial<ApiErrorBody>;
     throw new ApiError(status, err.error ?? "unknown_error", err.message ?? "Request failed");
   }
-  return unwrap(path, data) as T;
-}
-
-/** Real responses are wrapped (`{ routes }`, `{ trip }`). Hand the screen the part it renders. */
-function unwrap(path: string, data: unknown): unknown {
-  if (!data || typeof data !== "object") return data;
-  const body = data as Record<string, unknown>;
-  const p = path.split("?")[0];
-  if (p === "/me" && "user" in body) return body.user;
-  if (p === "/stations" && Array.isArray(body.stations)) return body.stations;
-  if (p === "/routes" && Array.isArray(body.routes)) return body.routes;
-  if (p === "/queue/leave" && "entry" in body) return body.entry;
-  if (p === "/trips/mine" && Array.isArray(body.trips)) return body.trips;
-  if (p === "/notifications" && Array.isArray(body.notifications)) return body.notifications;
-  if (p === "/dev/sms" && Array.isArray(body.messages)) return body.messages;
-  if (p === "/admin/reports" && Array.isArray(body.reports)) return body.reports;
-  if (
-    (p.startsWith("/driver/trips") || p.startsWith("/driver/entries")) &&
-    body.trip &&
-    typeof body.trip === "object"
-  ) {
-    return body.trip;
-  }
-  if (body.rating && typeof body.rating === "object" && p === "/ratings") return body.rating;
-  if (body.report && typeof body.report === "object" && (p === "/reports" || p.includes("/reports/"))) {
-    return body.report;
-  }
-  return data;
+  return data as T;
 }
 
 /** SWR fetcher: useSWR("/routes", fetcher) */
@@ -149,21 +122,21 @@ export const api = {
   login: (body: LoginRequest) => post<AuthResponse>("/auth/login", body),
   me: () => get<User>("/me"),
   stations: () => get<Station[]>("/stations"),
-  routes: () => get<RouteWithDemand[]>("/routes"),
+  routes: () => get<RouteSummary[]>("/routes"),
 
   joinQueue: (body: JoinQueueRequest) => post<JoinQueueResponse>("/queue/join", body),
   myQueue: () => get<MyQueue>("/queue/me"),
   leaveQueue: () => post<QueueEntry>("/queue/leave"),
   myTrips: () => get<PassengerTrip[]>("/trips/mine"),
-  rate: (body: CreateRatingRequest) => post<Rating>("/ratings", body),
-  report: (body: CreateReportRequest) => post<Report>("/reports", body),
+  rate: (body: RatingRequest) => post<Rating>("/ratings", body),
+  report: (body: ReportRequest) => post<Report>("/reports", body),
   notifications: () => get<Notification[]>("/notifications"),
   markNotificationsRead: (body: MarkNotificationsReadRequest = {}) =>
     post<{ updated: number }>("/notifications/read", body),
-  requestContract: (body: CreateContractRequest) => post<ContractRequest>("/contracts", body),
+  requestContract: (body: ContractRequestInput) => post<ContractRequest>("/contracts", body),
 
   driverMe: () => get<DriverMe>("/driver/me"),
-  driverArrive: (body: DriverArriveRequest) => post<DriverMe>("/driver/arrive", body),
+  driverArrive: (body: ArriveRequest) => post<DriverMe>("/driver/arrive", body),
   driverDemand: () => get<DriverDemand>("/driver/demand"),
   startTrip: (body: StartTripRequest) => post<TripDetail>("/driver/trips/start", body),
   trip: (id: string) => get<TripDetail>(`/driver/trips/${id}`),
@@ -174,13 +147,15 @@ export const api = {
   departTrip: (id: string) => post<TripDetail>(`/driver/trips/${id}/depart`),
   cancelTrip: (id: string) => post<TripDetail>(`/driver/trips/${id}/cancel`),
   arriveTrip: (id: string) => post<TripDetail>(`/driver/trips/${id}/arrive`),
-  respondToReport: (id: string, body: RespondReportRequest) =>
+  respondToReport: (id: string, body: DriverResponseRequest) =>
     post<Report>(`/driver/reports/${id}/respond`, body),
+  driverReports: () => get<Report[]>("/driver/reports"),
+  pulse: () => get<{ waitingNow: number }>("/public/pulse"),
 
-  stationQueues: () => get<StationQueuesResponse>("/station/queues"),
+  stationQueues: () => get<StationQueues>("/station/queues"),
   removeEntry: (entryId: string) => post<{ ok: true }>(`/station/entries/${entryId}/remove`),
 
-  adminStats: () => get<AdminStatsResponse>("/admin/stats"),
+  adminStats: () => get<AdminStats>("/admin/stats"),
   adminReports: () => get<Report[]>("/admin/reports"),
   updateReport: (id: string, body: UpdateReportRequest) => patch<Report>(`/admin/reports/${id}`, body),
 
