@@ -11,7 +11,7 @@ import { EmptyState, ErrorState, FormError, LoadingState } from "@/components/St
 import { StatusBadge } from "@/components/StatusBadge";
 import { api, ApiError, fetcher } from "@/lib/api";
 import { REFRESH_MS } from "@/lib/config";
-import { routeName } from "@/lib/format";
+import { countKey, routeName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
 import type { AssistanceType, MyQueue, RouteSummary } from "@/lib/types";
 
@@ -19,10 +19,6 @@ const ROUTES_KEY = "/routes";
 const MY_QUEUE_KEY = "/queue/me";
 
 const assistanceTypes: AssistanceType[] = ["NONE", "DISABILITY", "ELDERLY", "PREGNANT", "MOBILITY", "OTHER"];
-
-function countKey<K extends string>(n: number, none: K, one: K, many: K): K {
-  return n === 0 ? none : n === 1 ? one : many;
-}
 
 function GoToQueueLink() {
   const t = useT();

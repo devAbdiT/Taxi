@@ -683,18 +683,13 @@ const routes: RouteDef[] = [
         })
         .sort((a, b) => b.waiting - a.waiting);
 
+      // Only with an active trip: the reverse of its route (matches the backend contract).
       const trip = activeTripOf(taxi);
-      let returnSuggestion = null;
-      if (trip) {
-        const current = route(trip.routeId);
-        const reverse = demand.find(
-          (x) => x.route.origin.id === current.destinationId && x.route.destination.id === current.originId,
-        );
-        if (reverse) returnSuggestion = { ...reverse, reason: "RETURN_TRIP" as const };
-      } else if (taxi.status === "AT_STATION") {
-        const best = demand.find((x) => x.originId === taxi.currentStationId);
-        if (best) returnSuggestion = { ...best, reason: "FROM_CURRENT_STATION" as const };
-      }
+      const outbound = trip ? route(trip.routeId) : undefined;
+      const reverse = outbound
+        ? demand.find((x) => x.route.origin.id === outbound.destinationId && x.route.destination.id === outbound.originId)
+        : undefined;
+      const returnSuggestion = reverse ? { ...reverse, reason: "RETURN_TRIP" as const } : null;
       const strip = <T extends { originId: string }>({ originId: _originId, ...rest }: T) => rest;
       return {
         routes: demand.map(strip),
