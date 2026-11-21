@@ -75,8 +75,9 @@ export default function PassengerQueuePage() {
   const ahead = Math.max(0, (position ?? 1) - 1);
 
   return (
-    <section className="flex flex-col gap-5">
-      <h1 className="text-2xl font-bold">{t("queue.title")}</h1>
+    <section className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+      <div className="flex flex-col gap-5">
+      <h1 className="font-display text-3xl font-bold">{t("queue.title")}</h1>
 
       <div className="flex flex-col gap-2">
         <p className="text-lg font-semibold">{routeName(route, lang)}</p>
@@ -99,9 +100,13 @@ export default function PassengerQueuePage() {
         ) : (
           <div className="flex flex-col gap-4 rounded-[20px] bg-card p-4 shadow-card">
             <RouteLine from={stationName(route.origin, lang)} to={stationName(route.destination, lang)} />
-            {position !== null && <ProgressRing value={position} label={t("queue.position")} />}
+            {position !== null && (
+              <>
+                <p className="text-center font-display text-2xl font-bold">{t("queue.youAre", { n: position })}</p>
+                <ProgressRing value={position} label={t("queue.position")} />
+              </>
+            )}
             <p className="text-center text-lg font-semibold">{t(aheadKey(position ?? 1), { n: ahead })}</p>
-            <p className="text-center text-muted">{t("queue.eta", { n: ahead * 3 })}</p>
           </div>
         )}
       </div>
@@ -125,10 +130,11 @@ export default function PassengerQueuePage() {
           </Button>
         </div>
       ) : (
-        <Button variant="secondary" onClick={() => setConfirming(true)} fullWidth>
+        <Button variant="secondary" onClick={() => setConfirming(true)}>
           {t("queue.leave")}
         </Button>
       )}
+      </div>
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">

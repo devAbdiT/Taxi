@@ -8,10 +8,12 @@ import { useT } from "@/lib/i18n";
 
 export function LoadingState({ label }: { label?: string }) {
   const t = useT();
+  const text = label ?? t("common.loading");
   return (
-    <div role="status" className="flex items-center justify-center gap-3 py-10 text-lg text-slate-700">
-      <Icon name="spinner" className="size-6 animate-spin" />
-      <span>{label ?? t("common.loading")}</span>
+    <div role="status" aria-live="polite" className="flex flex-col gap-3 py-2">
+      <span className="sr-only">{text}</span>
+      <div className="shimmer h-28 rounded-[20px]" />
+      <div className="shimmer h-28 w-4/5 rounded-[20px]" />
     </div>
   );
 }
@@ -19,9 +21,9 @@ export function LoadingState({ label }: { label?: string }) {
 export function EmptyState({ title, action }: { title?: string; action?: ReactNode }) {
   const t = useT();
   return (
-    <div className="flex flex-col items-center gap-4 rounded-2xl border-2 border-dashed border-slate-300 px-4 py-10 text-center">
-      <Icon name="inbox" className="size-8 text-slate-500" />
-      <p className="text-lg text-slate-700">{title ?? t("common.empty")}</p>
+    <div className="flex flex-col items-center gap-4 rounded-[20px] border-2 border-dashed border-line bg-card px-4 py-10 text-center">
+      <Icon name="inbox" className="size-8 text-muted" />
+      <p className="text-lg text-ink">{title ?? t("common.empty")}</p>
       {action}
     </div>
   );

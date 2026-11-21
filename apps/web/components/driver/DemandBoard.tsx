@@ -24,25 +24,25 @@ export function DemandBoard({ routes, currentStationId }: DemandBoardProps) {
       {sorted.length === 0 ? (
         <EmptyState title={t("passenger.noRoutes")} />
       ) : (
-        <ol className="flex flex-col gap-2">
+        <ol className="grid gap-3 xl:grid-cols-2">
           {sorted.map(({ route, waiting, priorityWaiting }) => {
             const fromHere = route.origin.id === currentStationId;
             return (
               <li
                 key={route.id}
-                className={`flex items-center gap-4 rounded-xl border-2 bg-white p-4 ${
-                  fromHere ? "border-emerald-700 ring-2 ring-emerald-700" : "border-slate-200"
+                className={`flex items-center gap-4 rounded-[20px] border-2 bg-card p-4 shadow-card ${
+                  fromHere ? "border-go ring-2 ring-go" : "border-line"
                 }`}
               >
                 <div className="flex w-16 shrink-0 flex-col items-center">
                   <span className="text-3xl font-bold leading-none tabular-nums">{waiting}</span>
-                  <span className="text-xs text-slate-700">{t("driver.waiting")}</span>
+                  <span className="text-xs text-muted">{t("driver.waiting")}</span>
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <p className="text-lg font-semibold leading-tight">{routeName(route, lang)}</p>
                   <div className="flex flex-wrap items-center gap-2">
                     {fromHere && (
-                      <span className="rounded-full bg-emerald-700 px-3 py-1 text-sm font-semibold text-white">
+                      <span className="rounded-full bg-go px-3 py-1 text-sm font-semibold text-white">
                         {t("driver.fromYourStation")}
                       </span>
                     )}
