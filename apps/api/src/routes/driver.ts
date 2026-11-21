@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { CallPassengersRequest, DriverArriveRequest, Id, StartTripRequest } from "@taxiflow/shared";
+import { CallPassengersRequest, DriverArriveRequest, Id, RespondReportRequest, StartTripRequest } from "@taxiflow/shared";
 import { getAuth } from "../middleware/auth.js";
 import {
   arriveAtStation,
@@ -13,6 +13,7 @@ import {
   setEntryOutcome,
   startTrip,
 } from "../services/driver.js";
+import { respondToReport } from "../services/reports.js";
 
 export const driverRouter = Router();
 
@@ -65,4 +66,8 @@ driverRouter.post("/driver/trips/:id/cancel", async (req, res) => {
 
 driverRouter.post("/driver/trips/:id/arrive", async (req, res) => {
   res.json(await arriveTrip(getAuth(req).userId, param(req.params.id)));
+});
+
+driverRouter.post("/driver/reports/:id/respond", async (req, res) => {
+  res.json(await respondToReport(getAuth(req).userId, param(req.params.id), RespondReportRequest.parse(req.body)));
 });

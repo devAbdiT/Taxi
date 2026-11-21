@@ -1,15 +1,25 @@
 import {
   Language,
+  RatingTag,
+  ReportStatus,
+  ReportType,
+  type AdminReport,
   type DriverTaxi,
   type DriverTrip,
+  type Notification,
   type PublicUser,
   type QueueEntry,
+  type Rating,
+  type Report,
   type RouteSummary,
   type Station,
   type TripEntry,
 } from "@taxiflow/shared";
 import type {
+  Notification as DbNotification,
   QueueEntry as DbQueueEntry,
+  Rating as DbRating,
+  Report as DbReport,
   Route as DbRoute,
   Station as DbStation,
   Taxi as DbTaxi,
@@ -106,5 +116,58 @@ export function toDriverTrip(trip: TripForDriver): DriverTrip {
     departedAt: trip.departedAt?.toISOString() ?? null,
     arrivedAt: trip.arrivedAt?.toISOString() ?? null,
     entries: trip.entries.map(toTripEntry),
+  };
+}
+
+export function toNotification(row: DbNotification): Notification {
+  return {
+    id: row.id,
+    userId: row.userId,
+    type: row.type,
+    title: row.title,
+    body: row.body,
+    read: row.read,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export function toRating(row: DbRating): Rating {
+  return {
+    id: row.id,
+    tripId: row.tripId,
+    passengerId: row.passengerId,
+    stars: row.stars,
+    tags: row.tags.flatMap((tag) => {
+      const parsed = RatingTag.safeParse(tag);
+      return parsed.success ? [parsed.data] : [];
+    }),
+    comment: row.comment,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export function toReport(row: DbReport): Report {
+  return {
+    id: row.id,
+    reporterId: row.reporterId,
+    tripId: row.tripId,
+    driverId: row.driverId,
+    type: ReportType.parse(row.type),
+    description: row.description,
+    status: ReportStatus.parse(row.status),
+    driverResponse: row.driverResponse,
+    resolutionNote: row.resolutionNote,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export function toAdminReport(
+  row: DbReport & { reporter: DbUser; driver: DbUser | null; trip: (DbTrip & { taxi: DbTaxi }) | null },
+): AdminReport {
+  return {
+    ...toReport(row),
+    reporter: { id: row.reporter.id, name: row.reporter.name },
+    driver: row.driver ? { id: row.driver.id, name: row.driver.name } : null,
+    taxiPlate: row.trip?.taxi.plate ?? null,
   };
 }

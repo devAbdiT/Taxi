@@ -25,6 +25,27 @@ export function returnedText(language: string) {
   return { title: "Back in the queue", body: "The trip was cancelled. You kept your place." };
 }
 
+export function removedText(language: string) {
+  if (language === "am") {
+    return { title: "ከወረፋ ወጥተዋል", body: "የጣቢያው ተወካይ ከወረፋ አውጥቶዎታል።" };
+  }
+  return { title: "Removed from the queue", body: "A station representative removed you from the queue." };
+}
+
+export function reportFiledText(language: string) {
+  if (language === "am") {
+    return { title: "ሪፖርት ቀርቧል", body: "አንድ ተሳፋሪ ስለ ጉዞ ሪፖርት አቅርቧል።" };
+  }
+  return { title: "A report was filed", body: "A passenger filed a report about a trip." };
+}
+
+export function reportUpdatedText(language: string) {
+  if (language === "am") {
+    return { title: "ሪፖርቱ ተዘምኗል", body: "የሪፖርትዎ ሁኔታ ተዘምኗል።" };
+  }
+  return { title: "Report updated", body: "Your report was updated." };
+}
+
 export function arrivedText(language: string) {
   if (language === "am") {
     return { title: "ደርሰዋል", body: "ጉዞው ተጠናቋል። እባክዎ ደረጃ ይስጡ።" };
