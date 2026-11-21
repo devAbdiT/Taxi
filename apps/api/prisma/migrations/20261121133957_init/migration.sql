@@ -230,8 +230,3 @@ ALTER TABLE "Report" ADD CONSTRAINT "Report_driverId_fkey" FOREIGN KEY ("driverI
 
 -- AddForeignKey
 ALTER TABLE "ContractRequest" ADD CONSTRAINT "ContractRequest_requesterId_fkey" FOREIGN KEY ("requesterId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- One active queue entry per passenger (Prisma cannot express a partial unique index)
-CREATE UNIQUE INDEX "one_active_queue_entry"
-  ON "QueueEntry" ("passengerId")
-  WHERE "status" IN ('WAITING', 'CALLED');
