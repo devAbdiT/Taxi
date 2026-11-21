@@ -535,43 +535,54 @@ Response 200 `DevSmsResponse`
 
 ## Realtime (Socket.IO)
 
-Connect to `NEXT_PUBLIC_SOCKET_URL` (the API server) with the token:
+The socket server shares the API process and port. URL is the API origin (for local dev `http://localhost:4000`), path `/socket.io`.
+
+Connect with the same JWT login returns:
 
 ```ts
 import { io, type Socket } from "socket.io-client";
-import type { ClientToServerEvents, ServerToClientEvents } from "@taxiflow/shared";
+import type { ServerToClientEvents } from "@taxiflow/shared";
 
-const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(SOCKET_URL, { auth: { token } });
+const socket: Socket<ServerToClientEvents> = io(API_URL, { auth: { token } });
 ```
 
-A connection without a valid token is refused with `connect_error` message `unauthorized`.
+The token is read from `handshake.auth.token`. An `Authorization: Bearer ...` header is accepted as a fallback. A missing or invalid token is refused with `connect_error` message `unauthorized`. The server ignores any custom client event. It joins rooms itself.
 
 ### Rooms
 
 | Room | Who is in it |
 | --- | --- |
-| `user:{userId}` | Every connection, joined automatically |
-| `drivers` | Every DRIVER connection, joined automatically |
-| `route:{routeId}` | Any connection that sends `route:subscribe` |
+| `user:{userId}` | Every connection of that user, joined on connect |
+| `drivers` | Every DRIVER connection, joined on connect |
+| `route:{routeId}` | A passenger connection while that passenger has a WAITING or CALLED entry on the route. Joined on connect and on queue join; left when the entry ends |
 
 ### Server to client
 
-Event names are in `SOCKET_EVENTS`; payload schemas have the same names in shared.
+Event names are `SOCKET_EVENTS` in `@taxiflow/shared`.
 
-| Event | Sent to | Payload |
+| Event | Sent to | When |
 | --- | --- | --- |
-| `demand:update` | `drivers` and `route:{routeId}` | `DemandUpdatePayload` `{ routeId, waiting, priorityWaiting }` |
-| `queue:update` | `user:{passengerId}` | `QueueUpdatePayload` `{ entryId, status, position: number\|null, taxiPlate: string\|null }` |
-| `notification:new` | `user:{userId}` | `NotificationNewPayload`, the full `Notification` |
-| `trip:update` | `user:{driverId}` | `TripUpdatePayload` `{ tripId, status, seatsUsed, capacity }` |
+| `demand:update` | `drivers` and `route:{routeId}` | Queue, trip, or station changes that affect that route. Also once per route to a driver socket on connect |
+| `queue:update` | `user:{passengerId}` | That passenger's position or status changed, including a final event with `position: null` when the entry ends. Also once to a passenger socket on connect when they have an active entry |
+| `notification:new` | `user:{userId}` | A notification row was just inserted (called, no-show, returned to queue, trip complete) |
+| `trip:update` | `user:{driverId}` | That driver's trip changed |
 
-After every change to a queue, the server sends `demand:update` for the affected routes and `queue:update` to every WAITING passenger on that route, because their positions changed. `position` is set only while WAITING; `taxiPlate` only when CALLED.
+```json
+{ "routeId": "cmwqktdhh0003bgr6clmq20so", "waiting": 11, "priorityWaiting": 2 }
+```
 
-### Client to server
+```json
+{ "entryId": "cmwqktfw50013bgr68upeb0fy", "status": "CALLED", "position": null, "taxiPlate": "3-AA-10003" }
+```
 
-| Event | Payload | Effect |
-| --- | --- | --- |
-| `route:subscribe` | `{ routeId }` | Join `route:{routeId}` to get `demand:update` for that route (for example on the passenger route list) |
-| `route:unsubscribe` | `{ routeId }` | Leave the room |
+```json
+{ "id": "cmwqku4sq00058ur64oqka9sa", "userId": "cmwqktfmm000jbgr6tw2hjohj", "type": "QUEUE_CALLED", "title": "Taxi ready", "body": "Taxi 3-AA-10003 at Area B is ready. Board now.", "read": false, "createdAt": "2026-11-21T15:42:43.658Z" }
+```
 
-Every live screen should also refetch with SWR every 10 seconds, so the app keeps working if the socket drops.
+```json
+{ "tripId": "cmwqktwd100048ur6j5huamwc", "status": "LOADING", "seatsUsed": 1, "capacity": 19 }
+```
+
+`position` is set only while WAITING. `taxiPlate` is set only when CALLED. An ended entry (LEFT as CANCELLED, NO_SHOW) is sent with `position: null` and `taxiPlate: null`.
+
+After a reconnect the server sends the current queue state (passengers) or current demand (drivers). The client should also refetch REST once. Keep the 10-second SWR refresh as the fallback when the socket drops.

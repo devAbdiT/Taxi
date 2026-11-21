@@ -1,8 +1,19 @@
-import { Language, type PublicUser, type QueueEntry, type RouteSummary, type Station } from "@taxiflow/shared";
+import {
+  Language,
+  type DriverTaxi,
+  type DriverTrip,
+  type PublicUser,
+  type QueueEntry,
+  type RouteSummary,
+  type Station,
+  type TripEntry,
+} from "@taxiflow/shared";
 import type {
   QueueEntry as DbQueueEntry,
   Route as DbRoute,
   Station as DbStation,
+  Taxi as DbTaxi,
+  Trip as DbTrip,
   User as DbUser,
 } from "../generated/prisma/client.js";
 
@@ -47,4 +58,53 @@ export function toQueueEntry(entry: DbQueueEntry & { route: DbRouteWithStations 
 
 export function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name;
+}
+
+export function toDriverTaxi(taxi: DbTaxi & { currentStation: DbStation | null }): DriverTaxi {
+  return {
+    id: taxi.id,
+    plate: taxi.plate,
+    capacity: taxi.capacity,
+    status: taxi.status,
+    currentStation: taxi.currentStation ? toStation(taxi.currentStation) : null,
+  };
+}
+
+/** Driver and station views: first name and priority only, never the phone number. */
+export function toTripEntry(entry: DbQueueEntry & { passenger: DbUser }): TripEntry {
+  return {
+    id: entry.id,
+    firstName: firstName(entry.passenger.name),
+    isPriority: entry.isPriority,
+    status: entry.status,
+    calledAt: entry.calledAt?.toISOString() ?? null,
+    boardedAt: entry.boardedAt?.toISOString() ?? null,
+  };
+}
+
+type TripForDriver = DbTrip & {
+  taxi: DbTaxi;
+  route: DbRouteWithStations;
+  entries: (DbQueueEntry & { passenger: DbUser })[];
+};
+
+export function seatsUsedOf(entries: { status: string }[]): number {
+  return entries.filter((entry) => entry.status === "CALLED" || entry.status === "BOARDED").length;
+}
+
+export function toDriverTrip(trip: TripForDriver): DriverTrip {
+  const seatsUsed = seatsUsedOf(trip.entries);
+  return {
+    id: trip.id,
+    route: toRouteSummary(trip.route),
+    status: trip.status,
+    taxiPlate: trip.taxi.plate,
+    capacity: trip.taxi.capacity,
+    seatsUsed,
+    seatsLeft: trip.taxi.capacity - seatsUsed,
+    createdAt: trip.createdAt.toISOString(),
+    departedAt: trip.departedAt?.toISOString() ?? null,
+    arrivedAt: trip.arrivedAt?.toISOString() ?? null,
+    entries: trip.entries.map(toTripEntry),
+  };
 }

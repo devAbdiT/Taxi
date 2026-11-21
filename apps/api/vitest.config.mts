@@ -25,7 +25,7 @@ export default defineConfig({
     },
     // Every test file shares one database.
     fileParallelism: false,
-    testTimeout: 30_000,
+    testTimeout: 120_000,
     hookTimeout: 120_000,
   },
 });

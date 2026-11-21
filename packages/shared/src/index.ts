@@ -10,4 +10,4 @@ export * from "./driver.js";
 export * from "./station.js";
 export * from "./admin.js";
 export * from "./dev.js";
-export * from "./events.js";
+export * from "./socket.js";
