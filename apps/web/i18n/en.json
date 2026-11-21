@@ -113,7 +113,10 @@
   "role.STATION_REP": "Station representative",
   "role.ADMIN": "Administrator",
 
-  "auth.loginTitle": "Log in",
+  "auth.loginTitle": "Continue",
+  "auth.pickRole": "Choose who you are. No password for this demo.",
+  "auth.asPassenger": "Continue as passenger",
+  "auth.asDriver": "Continue as driver",
   "auth.registerTitle": "Create a passenger account",
   "auth.name": "Your name",
   "auth.phone": "Phone number",

@@ -113,7 +113,10 @@
   "role.STATION_REP": "የጣቢያ ተወካይ",
   "role.ADMIN": "አስተዳዳሪ",
 
-  "auth.loginTitle": "ግባ",
+  "auth.loginTitle": "ቀጥል",
+  "auth.pickRole": "ማን እንደሆኑ ይምረጡ። ለዚህ ማሳያ የይለፍ ቃል የለም።",
+  "auth.asPassenger": "እንደ ተሳፋሪ ቀጥል",
+  "auth.asDriver": "እንደ ሾፌር ቀጥል",
   "auth.registerTitle": "የተሳፋሪ መለያ ይፍጠሩ",
   "auth.name": "ስምዎ",
   "auth.phone": "ስልክ ቁጥር",
