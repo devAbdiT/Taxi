@@ -44,6 +44,7 @@ export default function LoginPage() {
       router.replace(homeFor(auth.user.role));
     } catch (err) {
       setFormError(err);
+    } finally {
       setSubmitting(false);
     }
   }

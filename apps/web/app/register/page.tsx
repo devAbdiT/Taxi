@@ -49,6 +49,7 @@ export default function RegisterPage() {
       router.replace(homeFor(auth.user.role));
     } catch (err) {
       setFormError(err);
+    } finally {
       setSubmitting(false);
     }
   }

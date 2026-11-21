@@ -1,7 +1,7 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import type { TKey, TVars } from "@/lib/i18n";
+import { useCallback, useSyncExternalStore } from "react";
+import { useT, type TKey, type TVars } from "@/lib/i18n";
 
 type Translate = (key: TKey, vars?: TVars) => string;
 
@@ -46,4 +46,11 @@ function getSnapshot() {
 /** Shared clock that ticks every 30 seconds. Returns 0 during server rendering. */
 export function useNow(): number {
   return useSyncExternalStore(subscribe, getSnapshot, () => 0);
+}
+
+/** Returns a formatter for relative text that re-renders as time passes; empty during server rendering. */
+export function useRelativeTime() {
+  const t = useT();
+  const now = useNow();
+  return useCallback((date: string) => (now ? formatRelative(date, now, t) : ""), [now, t]);
 }
