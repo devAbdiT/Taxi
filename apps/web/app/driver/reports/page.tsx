@@ -13,7 +13,8 @@ import type { Report } from "@/lib/types";
 export default function DriverReportsPage() {
   const t = useT();
   const toast = useToast();
-  const reports = useSWR<Report[]>("/driver/reports", fetcher);
+  const reports = useSWR<{ reports: Report[] }>("/driver/reports", fetcher);
+  const list = reports.data?.reports ?? [];
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -33,12 +34,12 @@ export default function DriverReportsPage() {
 
   if (reports.error && !reports.data) return <ErrorState error={reports.error} onRetry={() => reports.mutate()} />;
   if (!reports.data) return <LoadingState />;
-  if (reports.data.length === 0) return <EmptyState title={t("driver.noReports")} />;
+  if (list.length === 0) return <EmptyState title={t("driver.noReports")} />;
 
   return (
     <section className="flex flex-col gap-3">
       <h1 className="font-display text-3xl font-bold">{t("nav.reports")}</h1>
-      {reports.data.map((report) => (
+      {list.map((report) => (
         <article key={report.id} className="rounded-[20px] bg-card p-4 shadow-card">
           <div className="flex items-center justify-between gap-2">
             <p className="font-semibold">{t(`report.${report.type}`)}</p>

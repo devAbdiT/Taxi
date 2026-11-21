@@ -919,7 +919,7 @@ const routes: RouteDef[] = [
     method: "GET",
     pattern: "/driver/reports",
     roles: ["DRIVER"],
-    handler: ({ user }) => load().reports.filter((report) => report.driverId === user.id),
+    handler: ({ user }) => ({ reports: load().reports.filter((report) => report.driverId === user.id) }),
   },
   {
     method: "POST",
@@ -1051,15 +1051,20 @@ const routes: RouteDef[] = [
     roles: "public",
     handler: () => {
       const d = load();
-      return [...d.notifications]
+      const messages = [...d.notifications]
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .slice(0, 50)
-        .map((n) => ({
-          id: n.id,
-          to: d.users.find((u) => u.id === n.userId)?.phone ?? "",
-          body: n.body,
-          createdAt: n.createdAt,
-        }));
+        .slice(0, 100)
+        .map((n) => {
+          const recipient = d.users.find((u) => u.id === n.userId);
+          return {
+            id: n.id,
+            to: recipient?.phone ?? "",
+            recipientName: recipient?.name ?? "",
+            text: `TaxiFlow: ${n.body}`,
+            createdAt: n.createdAt,
+          };
+        });
+      return { messages };
     },
   },
 ];

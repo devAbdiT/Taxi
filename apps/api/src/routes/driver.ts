@@ -13,7 +13,7 @@ import {
   setEntryOutcome,
   startTrip,
 } from "../services/driver.js";
-import { respondToReport } from "../services/reports.js";
+import { listDriverReports, respondToReport } from "../services/reports.js";
 
 export const driverRouter = Router();
 
@@ -66,6 +66,10 @@ driverRouter.post("/driver/trips/:id/cancel", async (req, res) => {
 
 driverRouter.post("/driver/trips/:id/arrive", async (req, res) => {
   res.json(await arriveTrip(getAuth(req).userId, param(req.params.id)));
+});
+
+driverRouter.get("/driver/reports", async (req, res) => {
+  res.json(await listDriverReports(getAuth(req).userId));
 });
 
 driverRouter.post("/driver/reports/:id/respond", async (req, res) => {

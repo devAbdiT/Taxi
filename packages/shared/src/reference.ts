@@ -12,3 +12,9 @@ export const RoutesResponse = z.object({
   routes: z.array(RouteWithDemand),
 });
 export type RoutesResponse = z.infer<typeof RoutesResponse>;
+
+/** GET /public/pulse. Waiting passengers on every route. No token. */
+export const PublicPulseResponse = z.object({
+  waitingNow: z.number().int().nonnegative(),
+});
+export type PublicPulseResponse = z.infer<typeof PublicPulseResponse>;

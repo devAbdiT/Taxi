@@ -98,3 +98,9 @@ export const RespondReportResponse = z.object({
   report: Report,
 });
 export type RespondReportResponse = z.infer<typeof RespondReportResponse>;
+
+/** GET /driver/reports. Reports about the signed-in driver, newest first. No phone numbers. */
+export const DriverReportsResponse = z.object({
+  reports: z.array(Report),
+});
+export type DriverReportsResponse = z.infer<typeof DriverReportsResponse>;
