@@ -16,6 +16,7 @@ import { AppError, conflict, notFound } from "../lib/errors.js";
 import { arrivedText, calledText, noShowText, returnedText } from "../lib/messages.js";
 import { prisma } from "../lib/db.js";
 import { seatsUsedOf, toDriverTaxi, toDriverTrip, toTripEntry } from "../lib/serialize.js";
+import { createNotification, publishDemand, publishQueueChange, publishTripUpdate } from "../realtime/emitter.js";
 import { listRoutesWithDemand } from "./demand.js";
 
 type Tx = Prisma.TransactionClient;
@@ -59,12 +60,23 @@ async function activeTrip(tx: Tx, taxiId: string) {
 
 type PassengerNote = { id: string; language: string };
 type NoteType = "QUEUE_CALLED" | "QUEUE_NO_SHOW" | "QUEUE_RETURNED" | "TRIP_COMPLETED";
+type PendingNote = { userId: string; type: NoteType; title: string; body: string };
 
-async function notifyAll(tx: Tx, passengers: PassengerNote[], type: NoteType, textFor: (language: string) => { title: string; body: string }) {
-  if (passengers.length === 0) return;
-  await tx.notification.createMany({
-    data: passengers.map((passenger) => ({ userId: passenger.id, type, ...textFor(passenger.language) })),
-  });
+function pendingNotes(passengers: PassengerNote[], type: NoteType, textFor: (language: string) => { title: string; body: string }): PendingNote[] {
+  return passengers.map((passenger) => ({ userId: passenger.id, type, ...textFor(passenger.language) }));
+}
+
+async function deliver(notes: PendingNote[]): Promise<void> {
+  for (const note of notes) {
+    await createNotification(note);
+  }
+}
+
+async function routesLeaving(stationIds: Array<string | null>): Promise<string[]> {
+  const ids = stationIds.filter((id): id is string => id !== null);
+  if (ids.length === 0) return [];
+  const routes = await prisma.route.findMany({ where: { originId: { in: ids } }, select: { id: true } });
+  return routes.map((route) => route.id);
 }
 
 export async function getDriverMe(driverId: string): Promise<DriverMeResponse> {
@@ -83,7 +95,7 @@ export async function getDriverMe(driverId: string): Promise<DriverMeResponse> {
 
 /** OFFLINE or EN_ROUTE becomes AT_STATION. Does not finish an open trip; use the trip arrive endpoint for that. */
 export async function arriveAtStation(driverId: string, body: DriverArriveRequest): Promise<DriverArriveResponse> {
-  return prisma.$transaction(async (tx) => {
+  const committed = await prisma.$transaction(async (tx) => {
     const taxi = await requireTaxi(tx, driverId);
     if (taxi.status !== "OFFLINE" && taxi.status !== "EN_ROUTE") {
       throw conflict("invalid_taxi_status", "You can only arrive when offline or en route");
@@ -96,8 +108,10 @@ export async function arriveAtStation(driverId: string, body: DriverArriveReques
       data: { status: "AT_STATION", currentStationId: station.id },
       include: taxiInclude,
     });
-    return { taxi: toDriverTaxi(updated) };
+    return { response: { taxi: toDriverTaxi(updated) }, oldStationId: taxi.currentStationId, newStationId: station.id };
   });
+  await publishDemand(await routesLeaving([committed.oldStationId, committed.newStationId]));
+  return committed.response;
 }
 
 export async function getDemand(driverId: string): Promise<DriverDemandResponse> {
@@ -138,7 +152,7 @@ export async function getDemand(driverId: string): Promise<DriverDemandResponse>
 }
 
 export async function startTrip(driverId: string, body: StartTripRequest): Promise<TripResponse> {
-  return prisma.$transaction(async (tx) => {
+  const response = await prisma.$transaction(async (tx) => {
     const taxi = await requireTaxi(tx, driverId);
     if (taxi.status !== "AT_STATION" || !taxi.currentStationId) {
       throw conflict("invalid_taxi_status", "Arrive at a station before loading");
@@ -156,6 +170,9 @@ export async function startTrip(driverId: string, body: StartTripRequest): Promi
     await tx.taxi.update({ where: { id: taxi.id }, data: { status: "LOADING" } });
     return { trip: toDriverTrip(await loadTrip(tx, created.id)) };
   });
+  await publishDemand([body.routeId]);
+  await publishTripUpdate(response.trip.id);
+  return response;
 }
 
 export async function getTrip(driverId: string, tripId: string): Promise<TripResponse> {
@@ -167,7 +184,7 @@ export async function getTrip(driverId: string, tripId: string): Promise<TripRes
  * calling at the same moment cannot take the same passenger.
  */
 export async function callPassengers(driverId: string, tripId: string, body: CallPassengersRequest): Promise<CallPassengersResponse> {
-  return prisma.$transaction(async (tx) => {
+  const committed = await prisma.$transaction(async (tx) => {
     const trip = await requireOwnTrip(tx, driverId, tripId);
     if (trip.status !== "LOADING") throw conflict("trip_not_loading", "Passengers can only be called while loading");
 
@@ -183,6 +200,7 @@ export async function callPassengers(driverId: string, tripId: string, body: Cal
       LIMIT ${count}
       FOR UPDATE SKIP LOCKED`;
 
+    let notes: PendingNote[] = [];
     if (locked.length > 0) {
       const calledAt = Date.now();
       const rows = Prisma.join(locked.map((row, index) => Prisma.sql`(${row.id}, ${new Date(calledAt + index)})`));
@@ -195,7 +213,7 @@ export async function callPassengers(driverId: string, tripId: string, body: Cal
         where: { queueEntries: { some: { id: { in: locked.map((row) => row.id) } } } },
         select: { id: true, language: true },
       });
-      await notifyAll(tx, passengers, "QUEUE_CALLED", (language) =>
+      notes = pendingNotes(passengers, "QUEUE_CALLED", (language) =>
         calledText(language, trip.taxi.plate, trip.route.origin.name, trip.route.origin.nameAm),
       );
     }
@@ -203,14 +221,22 @@ export async function callPassengers(driverId: string, tripId: string, body: Cal
     const updated = await loadTrip(tx, trip.id);
     const calledIds = new Set(locked.map((row) => row.id));
     return {
-      trip: toDriverTrip(updated),
-      called: updated.entries.filter((entry) => calledIds.has(entry.id)).map(toTripEntry),
+      response: {
+        trip: toDriverTrip(updated),
+        called: updated.entries.filter((entry) => calledIds.has(entry.id)).map(toTripEntry),
+      },
+      notes,
+      routeId: trip.routeId,
     };
   });
+  await deliver(committed.notes);
+  await publishQueueChange({ routeIds: [committed.routeId] });
+  await publishTripUpdate(tripId);
+  return committed.response;
 }
 
 export async function setEntryOutcome(actor: { userId: string; role: Role }, entryId: string, outcome: "BOARDED" | "NO_SHOW"): Promise<EntryActionResponse> {
-  return prisma.$transaction(async (tx) => {
+  const committed = await prisma.$transaction(async (tx) => {
     const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "QueueEntry" WHERE id = ${entryId} FOR UPDATE`;
     if (!locked[0]) throw notFound("entry_not_found", "This queue entry does not exist");
 
@@ -237,14 +263,26 @@ export async function setEntryOutcome(actor: { userId: string; role: Role }, ent
       data: outcome === "BOARDED" ? { status: "BOARDED", boardedAt: new Date() } : { status: "NO_SHOW" },
       include: { passenger: true },
     });
-    if (outcome === "NO_SHOW") await notifyAll(tx, [updated.passenger], "QUEUE_NO_SHOW", noShowText);
-
-    return { entry: toTripEntry(updated), trip: toDriverTrip(await loadTrip(tx, entry.trip.id)) };
+    const notes = outcome === "NO_SHOW" ? pendingNotes([updated.passenger], "QUEUE_NO_SHOW", noShowText) : [];
+    return {
+      response: { entry: toTripEntry(updated), trip: toDriverTrip(await loadTrip(tx, entry.trip.id)) },
+      notes,
+      routeId: entry.routeId,
+      passengerId: updated.passengerId,
+      outcome,
+    };
   });
+  await deliver(committed.notes);
+  await publishQueueChange({
+    routeIds: [committed.routeId],
+    endedUserIds: committed.outcome === "NO_SHOW" ? [committed.passengerId] : [],
+  });
+  await publishTripUpdate(committed.response.trip.id);
+  return committed.response;
 }
 
 export async function departTrip(driverId: string, tripId: string): Promise<TripResponse> {
-  return prisma.$transaction(async (tx) => {
+  const committed = await prisma.$transaction(async (tx) => {
     const trip = await requireOwnTrip(tx, driverId, tripId);
     if (trip.status !== "LOADING") throw conflict("trip_not_loading", "Only a loading trip can depart");
     if (!trip.entries.some((entry) => entry.status === "BOARDED")) {
@@ -254,18 +292,27 @@ export async function departTrip(driverId: string, tripId: string): Promise<Trip
     const stillCalled = trip.entries.filter((entry) => entry.status === "CALLED");
     if (stillCalled.length > 0) {
       await tx.queueEntry.updateMany({ where: { id: { in: stillCalled.map((entry) => entry.id) } }, data: { status: "NO_SHOW" } });
-      await notifyAll(tx, stillCalled.map((entry) => entry.passenger), "QUEUE_NO_SHOW", noShowText);
     }
 
     await tx.trip.update({ where: { id: trip.id }, data: { status: "DEPARTED", departedAt: new Date() } });
     await tx.taxi.update({ where: { id: trip.taxiId }, data: { status: "EN_ROUTE", currentStationId: null } });
-    return { trip: toDriverTrip(await loadTrip(tx, trip.id)) };
+    return {
+      response: { trip: toDriverTrip(await loadTrip(tx, trip.id)) },
+      notes: pendingNotes(stillCalled.map((entry) => entry.passenger), "QUEUE_NO_SHOW", noShowText),
+      routeId: trip.routeId,
+      endedUserIds: stillCalled.map((entry) => entry.passengerId),
+    };
   });
+  await deliver(committed.notes);
+  // ASSUMPTION: publishQueueChange already emits demand:update, so it is not sent again.
+  await publishQueueChange({ routeIds: [committed.routeId], endedUserIds: committed.endedUserIds });
+  await publishTripUpdate(tripId);
+  return committed.response;
 }
 
 /** CALLED and BOARDED passengers go back to WAITING with their original joinedAt. */
 export async function cancelTrip(driverId: string, tripId: string): Promise<TripResponse> {
-  return prisma.$transaction(async (tx) => {
+  const committed = await prisma.$transaction(async (tx) => {
     const trip = await requireOwnTrip(tx, driverId, tripId);
     if (trip.status !== "LOADING") throw conflict("trip_not_loading", "Only a loading trip can be cancelled");
 
@@ -275,33 +322,42 @@ export async function cancelTrip(driverId: string, tripId: string): Promise<Trip
         where: { id: { in: returning.map((entry) => entry.id) } },
         data: { status: "WAITING", calledAt: null, boardedAt: null, tripId: null },
       });
-      await notifyAll(tx, returning.map((entry) => entry.passenger), "QUEUE_RETURNED", returnedText);
     }
 
     await tx.trip.update({ where: { id: trip.id }, data: { status: "CANCELLED" } });
     await tx.taxi.update({ where: { id: trip.taxiId }, data: { status: "AT_STATION" } });
-    return { trip: toDriverTrip(await loadTrip(tx, trip.id)) };
+    return {
+      response: { trip: toDriverTrip(await loadTrip(tx, trip.id)) },
+      notes: pendingNotes(returning.map((entry) => entry.passenger), "QUEUE_RETURNED", returnedText),
+      routeId: trip.routeId,
+    };
   });
+  await deliver(committed.notes);
+  await publishQueueChange({ routeIds: [committed.routeId] });
+  await publishTripUpdate(tripId);
+  return committed.response;
 }
 
 export async function arriveTrip(driverId: string, tripId: string): Promise<ArriveTripResponse> {
-  return prisma.$transaction(async (tx) => {
+  const committed = await prisma.$transaction(async (tx) => {
     const trip = await requireOwnTrip(tx, driverId, tripId);
     if (trip.status !== "DEPARTED") throw conflict("trip_not_departed", "Depart before marking the trip arrived");
 
-    await notifyAll(
-      tx,
-      trip.entries.filter((entry) => entry.status === "BOARDED").map((entry) => entry.passenger),
-      "TRIP_COMPLETED",
-      arrivedText,
-    );
-
+    const boarded = trip.entries.filter((entry) => entry.status === "BOARDED");
     await tx.trip.update({ where: { id: trip.id }, data: { status: "COMPLETED", arrivedAt: new Date() } });
     const taxi = await tx.taxi.update({
       where: { id: trip.taxiId },
       data: { status: "AT_STATION", currentStationId: trip.route.destinationId },
       include: taxiInclude,
     });
-    return { trip: toDriverTrip(await loadTrip(tx, trip.id)), taxi: toDriverTaxi(taxi) };
+    return {
+      response: { trip: toDriverTrip(await loadTrip(tx, trip.id)), taxi: toDriverTaxi(taxi) },
+      notes: pendingNotes(boarded.map((entry) => entry.passenger), "TRIP_COMPLETED", arrivedText),
+      destinationId: trip.route.destinationId,
+    };
   });
+  await deliver(committed.notes);
+  await publishTripUpdate(tripId);
+  await publishDemand(await routesLeaving([committed.destinationId]));
+  return committed.response;
 }

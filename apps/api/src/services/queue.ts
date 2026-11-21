@@ -1,9 +1,11 @@
 import {
   ACTIVE_QUEUE_STATUSES,
   JoinQueueRequest,
+  QueueStatus,
   type JoinQueueResponse,
   type LeaveQueueResponse,
   type MyQueueResponse,
+  type QueueUpdatePayload,
 } from "@taxiflow/shared";
 import type { z } from "zod";
 import { Prisma } from "../generated/prisma/client.js";
@@ -11,6 +13,8 @@ import { prisma } from "../lib/db.js";
 import { env } from "../lib/env.js";
 import { conflict, notFound } from "../lib/errors.js";
 import { toQueueEntry } from "../lib/serialize.js";
+import { publishQueueChange } from "../realtime/emitter.js";
+import { joinRouteRoom } from "../realtime/membership.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -40,9 +44,38 @@ export async function positionOf(tx: Tx, entry: { id: string; routeId: string })
   return row ? Number(row.position) : null;
 }
 
+/** One query for every WAITING and CALLED entry on a route, with the same window as GET /queue/me. */
+export async function listActiveQueueStates(routeId: string): Promise<{ passengerId: string; payload: QueueUpdatePayload }[]> {
+  const rows = await prisma.$queryRaw<
+    { id: string; passengerId: string; status: string; position: bigint | null; taxiPlate: string | null }[]
+  >`
+    SELECT q.id, q."passengerId", q.status::text AS status,
+           ranked.position,
+           CASE WHEN q.status = 'CALLED' THEN taxi.plate ELSE NULL END AS "taxiPlate"
+    FROM "QueueEntry" q
+    LEFT JOIN (
+      SELECT id, ROW_NUMBER() OVER (ORDER BY "isPriority" DESC, "joinedAt" ASC, id ASC) AS position
+      FROM "QueueEntry"
+      WHERE "routeId" = ${routeId} AND status = 'WAITING'
+    ) AS ranked ON ranked.id = q.id
+    LEFT JOIN "Trip" trip ON trip.id = q."tripId"
+    LEFT JOIN "Taxi" taxi ON taxi.id = trip."taxiId"
+    WHERE q."routeId" = ${routeId} AND q.status IN ('WAITING', 'CALLED')`;
+
+  return rows.map((row) => ({
+    passengerId: row.passengerId,
+    payload: {
+      entryId: row.id,
+      status: QueueStatus.parse(row.status),
+      position: row.position === null ? null : Number(row.position),
+      taxiPlate: row.taxiPlate,
+    },
+  }));
+}
+
 export async function joinQueue(passengerId: string, body: z.output<typeof JoinQueueRequest>): Promise<JoinQueueResponse> {
   try {
-    return await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const route = await tx.route.findUnique({ where: { id: body.routeId }, select: { id: true } });
       if (!route) {
         throw notFound("route_not_found", "This route does not exist");
@@ -72,6 +105,9 @@ export async function joinQueue(passengerId: string, body: z.output<typeof JoinQ
       }
       return { entry: toQueueEntry(entry), position };
     });
+    joinRouteRoom(passengerId, body.routeId);
+    await publishQueueChange({ routeIds: [body.routeId] });
+    return result;
   } catch (err) {
     // Two joins racing past the check above: the one_active_queue_entry index rejects the second.
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -100,7 +136,7 @@ export async function getMyQueue(passengerId: string): Promise<MyQueueResponse> 
 
 /** Cancels the passenger's WAITING or CALLED entry. Cancelling a CALLED entry frees its seat on the trip. */
 export async function leaveQueue(passengerId: string): Promise<LeaveQueueResponse> {
-  return prisma.$transaction(async (tx) => {
+  const committed = await prisma.$transaction(async (tx) => {
     // Lock the row so a driver calling passengers at the same moment cannot also take it.
     const locked = await tx.$queryRaw<{ id: string }[]>`
       SELECT id FROM "QueueEntry"
@@ -116,6 +152,8 @@ export async function leaveQueue(passengerId: string): Promise<LeaveQueueRespons
       data: { status: "CANCELLED" },
       include: entryInclude,
     });
-    return { entry: toQueueEntry(entry) };
+    return { entry: toQueueEntry(entry), routeId: entry.routeId };
   });
+  await publishQueueChange({ routeIds: [committed.routeId], endedUserIds: [passengerId] });
+  return { entry: committed.entry };
 }
