@@ -899,26 +899,36 @@ const routes: RouteDef[] = [
       const s = station(user.stationId ?? "");
       return {
         station: s,
-        queues: d.routes
+        routes: d.routes
           .filter((r) => r.originId === s.id)
-          .map((r) => ({
-            route: routeRef(r.id),
-            entries: [
-              ...d.entries.filter((e) => e.routeId === r.id && e.status === "CALLED"),
-              ...waitingInOrder(r.id),
-            ].map((e) => ({
-              id: e.id,
-              firstName: firstName(e.passengerId),
-              isPriority: e.isPriority,
-              status: e.status,
-              position: positionOf(e),
-              joinedAt: e.joinedAt,
-              tripId: e.tripId,
-            })),
-          })),
+          .map((r) => {
+            const waiting = waitingInOrder(r.id);
+            const called = d.entries.filter((e) => e.routeId === r.id && e.status === "CALLED");
+            return {
+              route: routeRef(r.id),
+              waiting: waiting.length,
+              priorityWaiting: waiting.filter((e) => e.isPriority).length,
+              entries: [...waiting, ...called].map((e) => ({
+                id: e.id,
+                firstName: firstName(e.passengerId),
+                isPriority: e.isPriority,
+                status: e.status,
+                position: positionOf(e),
+                joinedAt: e.joinedAt,
+                tripId: e.tripId,
+              })),
+            };
+          }),
         taxis: d.taxis
           .filter((t) => t.currentStationId === s.id)
-          .map(({ id, plate, capacity, status }) => ({ id, plate, capacity, status })),
+          .map((taxi) => ({
+            id: taxi.id,
+            plate: taxi.plate,
+            capacity: taxi.capacity,
+            status: taxi.status,
+            driverFirstName: firstName(taxi.driverId),
+            activeTripId: activeTripOf(taxi)?.id ?? null,
+          })),
       };
     },
   },
@@ -944,13 +954,10 @@ const routes: RouteDef[] = [
     handler: () => {
       const d = load();
       const called = d.entries.filter((e) => e.calledAt);
-      const averageWaitMinutes = called.length
+      const averageWaitSeconds = called.length
         ? Math.round(
-            (called.reduce((sum, e) => sum + (Date.parse(e.calledAt!) - Date.parse(e.joinedAt)), 0) /
-              called.length /
-              MINUTE) *
-              10,
-          ) / 10
+            called.reduce((sum, e) => sum + (Date.parse(e.calledAt!) - Date.parse(e.joinedAt)), 0) / called.length / 1000,
+          )
         : null;
 
       const completed = d.trips.filter((t) => t.status === "COMPLETED");
@@ -960,15 +967,19 @@ const routes: RouteDef[] = [
           const factors = trips.map(
             (t) => tripEntries(t.id).filter((e) => e.status === "BOARDED").length / taxiOf(t).capacity,
           );
-          const avg = factors.length ? factors.reduce((a, b) => a + b, 0) / factors.length : 0;
-          return { route: routeRef(r.id), loadFactor: Math.round(avg * 100) / 100, trips: trips.length };
+          const avg = factors.length ? factors.reduce((a, b) => a + b, 0) / factors.length : null;
+          return {
+            route: routeRef(r.id),
+            loadFactor: avg === null ? null : Math.round(avg * 100) / 100,
+            completedTrips: trips.length,
+          };
         })
-        .filter((x) => x.trips > 0);
+        .filter((x) => x.completedTrips > 0);
 
       const midnight = new Date();
       midnight.setHours(0, 0, 0, 0);
       return {
-        averageWaitMinutes,
+        averageWaitSeconds,
         loadFactorByRoute,
         tripsToday: d.trips.filter((t) => t.status !== "CANCELLED" && Date.parse(t.createdAt) >= midnight.getTime())
           .length,
@@ -980,7 +991,21 @@ const routes: RouteDef[] = [
     method: "GET",
     pattern: "/admin/reports",
     roles: ["ADMIN"],
-    handler: () => [...load().reports].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    handler: () => ({
+      reports: [...load().reports]
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map((report) => {
+          const reporter = load().users.find((user) => user.id === report.reporterId);
+          const driver = load().users.find((user) => user.id === report.driverId);
+          const trip = load().trips.find((item) => item.id === report.tripId);
+          return {
+            ...report,
+            reporter: { id: report.reporterId, name: reporter?.name ?? "" },
+            driver: driver ? { id: driver.id, name: driver.name } : null,
+            taxiPlate: trip ? taxiOf(trip).plate : null,
+          };
+        }),
+    }),
   },
   {
     method: "PATCH",
@@ -992,7 +1017,17 @@ const routes: RouteDef[] = [
       if (!["OPEN", "IN_REVIEW", "RESOLVED"].includes(status)) fail(400, "validation_error", "Invalid status");
       report.status = status;
       if (typeof body.resolutionNote === "string") report.resolutionNote = body.resolutionNote;
-      return report;
+      const reporter = load().users.find((user) => user.id === report.reporterId);
+      const driver = load().users.find((user) => user.id === report.driverId);
+      const trip = load().trips.find((item) => item.id === report.tripId);
+      return {
+        report: {
+          ...report,
+          reporter: { id: report.reporterId, name: reporter?.name ?? "" },
+          driver: driver ? { id: driver.id, name: driver.name } : null,
+          taxiPlate: trip ? taxiOf(trip).plate : null,
+        },
+      };
     },
   },
 

@@ -1,5 +1,6 @@
 // The API contract lives in packages/shared (Person A). Screens keep importing from here.
 export type {
+  AdminReport,
   AdminStatsResponse,
   AssistanceType,
   AuthResponse,

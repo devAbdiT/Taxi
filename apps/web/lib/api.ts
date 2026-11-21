@@ -1,5 +1,6 @@
 import { API_URL, USE_MOCKS } from "@/lib/config";
 import type {
+  AdminReport,
   AdminStatsResponse,
   AuthResponse,
   CallPassengersRequest,
@@ -181,8 +182,8 @@ export const api = {
   removeEntry: (entryId: string) => post<{ ok: true }>(`/station/entries/${entryId}/remove`),
 
   adminStats: () => get<AdminStatsResponse>("/admin/stats"),
-  adminReports: () => get<Report[]>("/admin/reports"),
-  updateReport: (id: string, body: UpdateReportRequest) => patch<Report>(`/admin/reports/${id}`, body),
+  adminReports: () => get<AdminReport[]>("/admin/reports"),
+  updateReport: (id: string, body: UpdateReportRequest) => patch<AdminReport>(`/admin/reports/${id}`, body),
 
   devReset: () => post<{ ok: true }>("/dev/reset"),
   devSms: () => get<SmsMessage[]>("/dev/sms"),

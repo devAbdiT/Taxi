@@ -215,5 +215,25 @@
 
   "sms.title": "Simulated text messages",
   "sms.empty": "No messages have been sent.",
-  "sms.to": "To {name}"
+  "sms.to": "To {name}",
+
+  "station.title": "Queues at {station}",
+  "station.empty": "Nobody is waiting at this station.",
+  "station.remove": "Remove",
+  "station.taxis": "Taxis here",
+  "station.noTaxis": "No taxi is at this station.",
+
+  "admin.averageWait": "Average wait",
+  "admin.noWait": "No one has been called yet",
+  "admin.minutes": "{n} min",
+  "admin.tripsToday": "Trips today",
+  "admin.waitingNow": "Waiting now",
+  "admin.load": "How full taxis are",
+  "admin.noTrips": "No completed trips yet.",
+  "admin.reports": "Reports",
+  "admin.noReports": "No reports.",
+  "admin.note": "Resolution note",
+  "admin.review": "Start review",
+  "admin.resolve": "Mark resolved",
+  "admin.reopen": "Reopen"
 }
