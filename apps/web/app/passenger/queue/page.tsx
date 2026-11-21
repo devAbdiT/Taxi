@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { Button, ButtonLink } from "@/components/Button";
-import { NotificationList } from "@/components/NotificationList";
 import { Icon } from "@/components/Icon";
 import { EmptyState, ErrorState, FormError, LoadingState } from "@/components/States";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -13,7 +12,6 @@ import { REFRESH_MS } from "@/lib/config";
 import { routeName, stationName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
 import { useRelativeTime } from "@/lib/time";
-import { useSocket } from "@/lib/useSocket";
 import type { MyQueue } from "@/lib/types";
 
 const MY_QUEUE_KEY = "/queue/me";
@@ -31,10 +29,6 @@ export default function PassengerQueuePage() {
   const router = useRouter();
   const { mutate: mutateGlobal } = useSWRConfig();
   const { data, error, mutate } = useSWR<MyQueue>(MY_QUEUE_KEY, fetcher, { refreshInterval: REFRESH_MS });
-  useSocket({
-    onQueue: () => void mutate(),
-    onNotification: () => void mutateGlobal("/notifications"),
-  });
 
   const [confirming, setConfirming] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -63,10 +57,10 @@ export default function PassengerQueuePage() {
   const route = entry?.route;
   if (!entry || !route) {
     return (
-      <div className="flex flex-col gap-8">
-        <EmptyState title={t("queue.notInQueue")} action={<ButtonLink href="/passenger">{t("queue.findRoute")}</ButtonLink>} />
-        <NotificationList />
-      </div>
+      <EmptyState
+        title={t("queue.notInQueue")}
+        action={<ButtonLink href="/passenger">{t("queue.findRoute")}</ButtonLink>}
+      />
     );
   }
 
@@ -133,7 +127,6 @@ export default function PassengerQueuePage() {
           {t("queue.leave")}
         </Button>
       )}
-      <NotificationList />
     </section>
   );
 }

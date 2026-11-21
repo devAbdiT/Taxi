@@ -1,12 +1,10 @@
 // The API contract lives in packages/shared (Person A). Screens keep importing from here.
 export type {
-  AdminReport,
   AdminStatsResponse,
   AssistanceType,
   AuthResponse,
   CallPassengersRequest,
   ContractRequest,
-  ContractType,
   CreateContractRequest,
   CreateRatingRequest,
   CreateReportRequest,
@@ -26,7 +24,6 @@ export type {
   QueueEntry,
   QueueStatus,
   Rating,
-  RatingTag,
   RegisterRequest,
   LoginRequest,
   Report,

@@ -1,6 +1,5 @@
 import { API_URL, USE_MOCKS } from "@/lib/config";
 import type {
-  AdminReport,
   AdminStatsResponse,
   AuthResponse,
   CallPassengersRequest,
@@ -131,7 +130,6 @@ function unwrap(path: string, data: unknown): unknown {
   ) {
     return body.trip;
   }
-  if (body.request && typeof body.request === "object" && p === "/contracts") return body.request;
   if (body.rating && typeof body.rating === "object" && p === "/ratings") return body.rating;
   if (body.report && typeof body.report === "object" && (p === "/reports" || p.includes("/reports/"))) {
     return body.report;
@@ -183,8 +181,8 @@ export const api = {
   removeEntry: (entryId: string) => post<{ ok: true }>(`/station/entries/${entryId}/remove`),
 
   adminStats: () => get<AdminStatsResponse>("/admin/stats"),
-  adminReports: () => get<AdminReport[]>("/admin/reports"),
-  updateReport: (id: string, body: UpdateReportRequest) => patch<AdminReport>(`/admin/reports/${id}`, body),
+  adminReports: () => get<Report[]>("/admin/reports"),
+  updateReport: (id: string, body: UpdateReportRequest) => patch<Report>(`/admin/reports/${id}`, body),
 
   devReset: () => post<{ ok: true }>("/dev/reset"),
   devSms: () => get<SmsMessage[]>("/dev/sms"),

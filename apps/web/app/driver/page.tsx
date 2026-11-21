@@ -1,6 +1,6 @@
 "use client";
 
-import useSWR, { useSWRConfig } from "swr";
+import useSWR from "swr";
 import { ArriveSelector } from "@/components/driver/ArriveSelector";
 import { DemandBoard } from "@/components/driver/DemandBoard";
 import { ReturnCard } from "@/components/driver/ReturnCard";
@@ -10,20 +10,11 @@ import { TripPanel } from "@/components/driver/TripPanel";
 import { ErrorState, LoadingState } from "@/components/States";
 import { fetcher } from "@/lib/api";
 import { REFRESH_MS } from "@/lib/config";
-import { useSocket } from "@/lib/useSocket";
 import type { DriverDemand, DriverMe } from "@/lib/types";
 
 export default function DriverPage() {
-  const { mutate } = useSWRConfig();
   const me = useSWR<DriverMe>("/driver/me", fetcher, { refreshInterval: REFRESH_MS });
   const demand = useSWR<DriverDemand>("/driver/demand", fetcher, { refreshInterval: REFRESH_MS });
-  useSocket({
-    onDemand: () => void mutate("/driver/demand"),
-    onTrip: (payload) => {
-      void mutate("/driver/me");
-      void mutate(`/driver/trips/${payload.tripId}`);
-    },
-  });
 
   if (me.error && !me.data) return <ErrorState error={me.error} onRetry={() => me.mutate()} />;
   if (!me.data) return <LoadingState />;

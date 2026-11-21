@@ -8,9 +8,6 @@ import { useT, type TKey } from "@/lib/i18n";
 const links: { href: string; label: TKey }[] = [
   { href: "/passenger", label: "nav.routes" },
   { href: "/passenger/queue", label: "nav.myQueue" },
-  { href: "/passenger/trips", label: "nav.trips" },
-  { href: "/passenger/report", label: "nav.report" },
-  { href: "/contracts", label: "nav.contracts" },
 ];
 
 const item =
@@ -21,7 +18,7 @@ export function PassengerNav() {
   const t = useT();
   const pathname = usePathname();
   return (
-    <nav className="mb-6 flex flex-wrap gap-1 rounded-xl border-2 border-slate-200 bg-white p-1">
+    <nav className="mb-6 grid grid-cols-3 gap-1 rounded-xl border-2 border-slate-200 bg-white p-1">
       {links.map(({ href, label }) => {
         const active = pathname === href;
         return (

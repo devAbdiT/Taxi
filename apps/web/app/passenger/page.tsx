@@ -13,7 +13,6 @@ import { api, ApiError, fetcher } from "@/lib/api";
 import { REFRESH_MS } from "@/lib/config";
 import { countKey, routeName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
-import { useSocket } from "@/lib/useSocket";
 import type { AssistanceType, MyQueue, RouteWithDemand } from "@/lib/types";
 
 const ROUTES_KEY = "/routes";
@@ -41,7 +40,6 @@ export default function PassengerRoutesPage() {
   const { mutate } = useSWRConfig();
   const routes = useSWR<RouteWithDemand[]>(ROUTES_KEY, fetcher, { refreshInterval: REFRESH_MS });
   const myQueue = useSWR<MyQueue>(MY_QUEUE_KEY, fetcher);
-  useSocket({ onDemand: () => void mutate(ROUTES_KEY) }, routes.data?.map((route) => route.id) ?? []);
 
   const [routeId, setRouteId] = useState<string | null>(null);
   const [assistance, setAssistance] = useState<AssistanceType>("NONE");
