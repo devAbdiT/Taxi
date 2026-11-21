@@ -4,6 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { Button } from "@/components/Button";
 import { ChoiceCard } from "@/components/ChoiceCard";
+import { StepHeader } from "@/components/driver/StepHeader";
 import { ErrorState, FormError, LoadingState } from "@/components/States";
 import { api, fetcher } from "@/lib/api";
 import { stationName } from "@/lib/format";
@@ -36,8 +37,9 @@ export function ArriveSelector({ onArrived }: { onArrived: () => Promise<unknown
 
   return (
     <section className="flex flex-col gap-3 rounded-2xl border-2 border-amber-400 bg-amber-50 p-4">
+      <StepHeader step={1} title={t("driver.stepArrive")} />
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-lg font-bold">{t("driver.arriveTitle")}</legend>
+        <legend className="mb-1 text-lg font-semibold">{t("driver.arriveTitle")}</legend>
         <p className="text-slate-800">{t("driver.arriveHint")}</p>
         {stations.error && !stations.data ? (
           <ErrorState error={stations.error} onRetry={() => stations.mutate()} />
