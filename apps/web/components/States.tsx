@@ -27,6 +27,18 @@ export function EmptyState({ title, action }: { title?: string; action?: ReactNo
   );
 }
 
+/** Inline error under a form; renders nothing when there is no error. */
+export function FormError({ error }: { error: unknown }) {
+  const t = useT();
+  if (!error) return null;
+  return (
+    <p role="alert" className="flex items-start gap-2 rounded-xl border-2 border-red-300 bg-red-50 p-3 text-red-900">
+      <Icon name="alert" className="mt-0.5 size-5" />
+      {errorMessage(error, t)}
+    </p>
+  );
+}
+
 export function ErrorState({ error, onRetry }: { error?: unknown; onRetry?: () => void }) {
   const t = useT();
   return (
