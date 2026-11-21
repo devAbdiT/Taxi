@@ -14,7 +14,7 @@ import { api, ApiError, fetcher } from "@/lib/api";
 import { REFRESH_MS } from "@/lib/config";
 import { countKey, routeName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
-import type { AssistanceType, MyQueue, RouteSummary } from "@/lib/types";
+import type { AssistanceType, MyQueueResponse, RoutesResponse } from "@/lib/types";
 
 const ROUTES_KEY = "/routes";
 const MY_QUEUE_KEY = "/queue/me";
@@ -40,8 +40,8 @@ export default function PassengerRoutesPage() {
   const lang = useLanguage();
   const router = useRouter();
   const { mutate } = useSWRConfig();
-  const routes = useSWR<RouteSummary[]>(ROUTES_KEY, fetcher, { refreshInterval: REFRESH_MS });
-  const myQueue = useSWR<MyQueue>(MY_QUEUE_KEY, fetcher);
+  const routes = useSWR<RoutesResponse>(ROUTES_KEY, fetcher, { refreshInterval: REFRESH_MS });
+  const myQueue = useSWR<MyQueueResponse>(MY_QUEUE_KEY, fetcher);
 
   const [routeId, setRouteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -70,9 +70,10 @@ export default function PassengerRoutesPage() {
   }
 
   const activeEntry = myQueue.data?.entry;
-  const activeRoute = myQueue.data?.route;
+  const activeRoute = activeEntry?.route;
   const query = search.trim().toLowerCase();
-  const visibleRoutes = (routes.data ?? []).filter((route) => {
+  const routeList = routes.data?.routes ?? [];
+  const visibleRoutes = routeList.filter((route) => {
     if (!query) return true;
     const text = [route.origin.name, route.origin.nameAm, route.destination.name, route.destination.nameAm]
       .filter(Boolean)
@@ -110,7 +111,7 @@ export default function PassengerRoutesPage() {
           <ErrorState error={routes.error} onRetry={() => routes.mutate()} />
         ) : !routes.data ? (
           <LoadingState />
-        ) : routes.data.length === 0 ? (
+        ) : routeList.length === 0 ? (
           <EmptyState title={t("passenger.noRoutes")} />
         ) : visibleRoutes.length === 0 ? (
           <EmptyState title={t("passenger.noMatch")} />

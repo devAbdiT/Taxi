@@ -14,7 +14,7 @@ import { REFRESH_MS } from "@/lib/config";
 import { routeName, stationName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
 import { useRelativeTime } from "@/lib/time";
-import type { MyQueue, Notification } from "@/lib/types";
+import type { MyQueueResponse, NotificationsResponse } from "@/lib/types";
 
 const MY_QUEUE_KEY = "/queue/me";
 
@@ -30,8 +30,8 @@ export default function PassengerQueuePage() {
   const relative = useRelativeTime();
   const router = useRouter();
   const { mutate: mutateGlobal } = useSWRConfig();
-  const { data, error, mutate } = useSWR<MyQueue>(MY_QUEUE_KEY, fetcher, { refreshInterval: REFRESH_MS });
-  const notes = useSWR<Notification[]>("/notifications", fetcher, { refreshInterval: REFRESH_MS });
+  const { data, error, mutate } = useSWR<MyQueueResponse>(MY_QUEUE_KEY, fetcher, { refreshInterval: REFRESH_MS });
+  const notes = useSWR<NotificationsResponse>("/notifications", fetcher, { refreshInterval: REFRESH_MS });
 
   const [confirming, setConfirming] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -61,7 +61,8 @@ export default function PassengerQueuePage() {
   if (error && !data) return <ErrorState error={error} onRetry={() => mutate()} />;
   if (!data) return <LoadingState />;
 
-  const { entry, route, position, taxiPlate } = data;
+  const { entry, position, taxiPlate } = data;
+  const route = entry?.route;
   if (!entry || !route) {
     return (
       <EmptyState
@@ -138,7 +139,14 @@ export default function PassengerQueuePage() {
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-xl font-bold">{t("queue.notifications")}</h2>
+          <h2 className="font-display text-xl font-bold">
+            {t("queue.notifications")}
+            {(notes.data?.unread ?? 0) > 0 && (
+              <span className="ml-2 inline-flex min-h-7 min-w-7 items-center justify-center rounded-full bg-taxi px-2 text-sm text-ink">
+                {notes.data?.unread}
+              </span>
+            )}
+          </h2>
           <Button
             variant="secondary"
             onClick={() => void api.markNotificationsRead().then(() => notes.mutate())}
@@ -146,10 +154,10 @@ export default function PassengerQueuePage() {
             {t("queue.markRead")}
           </Button>
         </div>
-        {(notes.data ?? []).length === 0 ? (
+        {(notes.data?.notifications ?? []).length === 0 ? (
           <p className="text-muted">{t("queue.noNotes")}</p>
         ) : (
-          notes.data?.map((note) => (
+          notes.data?.notifications.map((note) => (
             <article key={note.id} className="rounded-[20px] border border-line bg-card p-4">
               <p className="flex items-center gap-2 font-semibold">
                 {!note.read && <span className="size-2.5 rounded-full bg-taxi" />}

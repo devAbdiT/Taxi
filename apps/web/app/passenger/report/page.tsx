@@ -7,14 +7,14 @@ import { useToast } from "@/components/Providers";
 import { ErrorState, LoadingState } from "@/components/States";
 import { api, fetcher } from "@/lib/api";
 import { useT } from "@/lib/i18n";
-import type { PassengerTrip, ReportType } from "@/lib/types";
+import type { MyTripsResponse, ReportType } from "@/lib/types";
 
 const types: ReportType[] = ["OVERCHARGING", "UNSAFE_DRIVING", "DISRESPECT", "DISCRIMINATION", "LOST_PROPERTY", "OTHER"];
 
 export default function ReportPage() {
   const t = useT();
   const toast = useToast();
-  const trips = useSWR<PassengerTrip[]>("/trips/mine", fetcher);
+  const trips = useSWR<MyTripsResponse>("/trips/mine", fetcher);
   const [type, setType] = useState<ReportType>("OVERCHARGING");
   const [description, setDescription] = useState("");
   const [tripId, setTripId] = useState("");
@@ -73,8 +73,8 @@ export default function ReportPage() {
         {t("report.trip")}
         <select value={tripId} onChange={(event) => setTripId(event.target.value)} className="min-h-12 rounded-[14px] border border-line bg-card px-3">
           <option value="">{t("report.none")}</option>
-          {trips.data.map((trip) => (
-            <option key={trip.id} value={trip.id}>{trip.taxiPlate}</option>
+          {trips.data.trips.map((trip) => (
+            <option key={trip.tripId} value={trip.tripId}>{trip.taxiPlate}</option>
           ))}
         </select>
       </label>

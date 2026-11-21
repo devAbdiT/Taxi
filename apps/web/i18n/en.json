@@ -292,6 +292,7 @@
   "admin.noData": "No data yet",
   "admin.noRatings": "Ratings average appears after passengers rate completed trips.",
   "admin.load": "Load factor",
+  "admin.completedTrips": "{n} completed",
   "admin.filterAll": "All",
   "admin.inReview": "Mark in review",
   "admin.resolve": "Resolve",

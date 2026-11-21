@@ -10,11 +10,11 @@ import { TripPanel } from "@/components/driver/TripPanel";
 import { ErrorState, LoadingState } from "@/components/States";
 import { fetcher } from "@/lib/api";
 import { REFRESH_MS } from "@/lib/config";
-import type { DriverDemand, DriverMe } from "@/lib/types";
+import type { DriverDemandResponse, DriverMeResponse } from "@/lib/types";
 
 export default function DriverPage() {
-  const me = useSWR<DriverMe>("/driver/me", fetcher, { refreshInterval: REFRESH_MS });
-  const demand = useSWR<DriverDemand>("/driver/demand", fetcher, { refreshInterval: REFRESH_MS });
+  const me = useSWR<DriverMeResponse>("/driver/me", fetcher, { refreshInterval: REFRESH_MS });
+  const demand = useSWR<DriverDemandResponse>("/driver/demand", fetcher, { refreshInterval: REFRESH_MS });
 
   if (me.error && !me.data) return <ErrorState error={me.error} onRetry={() => me.mutate()} />;
   if (!me.data) return <LoadingState />;
@@ -22,7 +22,7 @@ export default function DriverPage() {
   const { taxi, activeTrip } = me.data;
   const canArrive = !activeTrip && (taxi.status === "OFFLINE" || taxi.status === "EN_ROUTE");
   const refresh = () => Promise.all([me.mutate(), demand.mutate()]);
-  const waitingOn = (routeId: string) => demand.data?.routes.find((r) => r.route.id === routeId)?.waiting ?? 0;
+  const waitingOn = (routeId: string) => demand.data?.routes.find((route) => route.id === routeId)?.waiting ?? 0;
 
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">

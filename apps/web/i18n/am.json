@@ -292,6 +292,7 @@
   "admin.noData": "እስካሁን መረጃ የለም",
   "admin.noRatings": "የግምገማ አማካይ ተሳፋሪዎች ጉዞ ከገመገሙ በኋላ ይታያል።",
   "admin.load": "የመጫን መጠን",
+  "admin.completedTrips": "{n} ተጠናቀቀ",
   "admin.filterAll": "ሁሉም",
   "admin.inReview": "በግምገማ ላይ አድርግ",
   "admin.resolve": "ፍታ",

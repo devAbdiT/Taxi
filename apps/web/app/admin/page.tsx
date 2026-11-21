@@ -3,7 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { Button } from "@/components/Button";
-import { AnimatedNumber, Sparkline } from "@/components/kit";
+import { AnimatedNumber } from "@/components/kit";
 import { useToast } from "@/components/Providers";
 import { EmptyState, ErrorState, LoadingState } from "@/components/States";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -11,14 +11,14 @@ import { api, fetcher } from "@/lib/api";
 import { REFRESH_MS } from "@/lib/config";
 import { routeName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
-import type { AdminStats, Report, ReportStatus } from "@/lib/types";
+import type { AdminReportsResponse, AdminStatsResponse, ReportStatus } from "@/lib/types";
 
 export default function AdminPage() {
   const t = useT();
   const lang = useLanguage();
   const toast = useToast();
-  const stats = useSWR<AdminStats>("/admin/stats", fetcher, { refreshInterval: REFRESH_MS });
-  const reports = useSWR<Report[]>("/admin/reports", fetcher, { refreshInterval: REFRESH_MS });
+  const stats = useSWR<AdminStatsResponse>("/admin/stats", fetcher, { refreshInterval: REFRESH_MS });
+  const reports = useSWR<AdminReportsResponse>("/admin/reports", fetcher, { refreshInterval: REFRESH_MS });
   const [filter, setFilter] = useState<ReportStatus | "ALL">("ALL");
   const [query, setQuery] = useState("");
   const [note, setNote] = useState("");
@@ -48,21 +48,24 @@ export default function AdminPage() {
   }
   if (!stats.data || !reports.data) return <LoadingState />;
 
-  const open = reports.data.filter((report) => report.status !== "RESOLVED").length;
+  const reportList = reports.data.reports;
+  const open = reportList.filter((report) => report.status !== "RESOLVED").length;
   const needle = query.trim().toLowerCase();
-  const visible = reports.data.filter((report) => {
+  const visible = reportList.filter((report) => {
     if (filter !== "ALL" && report.status !== filter) return false;
     if (!needle) return true;
     const text = `${t(`report.${report.type}`)} ${report.description} ${report.driverResponse ?? ""}`.toLowerCase();
     return text.includes(needle);
   });
-  const maxLoad = Math.max(...stats.data.loadFactorByRoute.map((item) => item.loadFactor), 0.01);
+  const maxLoad = Math.max(...stats.data.loadFactorByRoute.map((item) => item.loadFactor ?? 0), 0.01);
+  const waitMinutes =
+    stats.data.averageWaitSeconds === null ? null : Math.round(stats.data.averageWaitSeconds / 60);
 
   return (
     <div className="flex flex-col gap-6">
       <h1 className="font-display text-3xl font-bold">{t("admin.title")}</h1>
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label={t("admin.wait")} value={stats.data.averageWaitMinutes} suffix={t("admin.minutes")} />
+        <Stat label={t("admin.wait")} value={waitMinutes} suffix={t("admin.minutes")} />
         <Stat label={t("admin.trips")} value={stats.data.tripsToday} />
         <Stat label={t("admin.waiting")} value={stats.data.waitingNow} />
         <Stat label={t("admin.openReports")} value={open} />
@@ -74,17 +77,23 @@ export default function AdminPage() {
         <div className="mt-4 flex flex-col gap-3">
           {stats.data.loadFactorByRoute.map((item) => (
             <div key={item.route.id}>
-              <div className="mb-1 flex justify-between text-sm">
+              <div className="mb-1 flex justify-between gap-3 text-sm">
                 <span>{routeName(item.route, lang)}</span>
-                <span className="tabular-nums">{Math.round(item.loadFactor * 100)}%</span>
+                <span className="tabular-nums">
+                  {item.loadFactor === null ? t("admin.noData") : `${Math.round(item.loadFactor * 100)}%`}
+                  {" · "}
+                  {t("admin.completedTrips", { n: item.completedTrips })}
+                </span>
               </div>
               <div className="h-3 rounded-full bg-sky">
-                <div className="h-3 rounded-full bg-cobalt" style={{ width: `${(item.loadFactor / maxLoad) * 100}%` }} />
+                <div
+                  className="h-3 rounded-full bg-cobalt"
+                  style={{ width: `${item.loadFactor === null ? 0 : (item.loadFactor / maxLoad) * 100}%` }}
+                />
               </div>
             </div>
           ))}
         </div>
-        {stats.data.waitSamples && <Sparkline values={stats.data.waitSamples} />}
       </section>
 
       <section className="flex flex-col gap-3">

@@ -41,7 +41,7 @@ export default function DevUiPage() {
     try {
       const { token } = await api.login({ phone: "0911000100", password: "demo1234" });
       setToken(token);
-      setRoutes(await api.routes());
+      setRoutes((await api.routes()).routes);
     } catch (e) {
       setError(e);
     } finally {

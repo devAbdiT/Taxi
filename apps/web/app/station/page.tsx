@@ -11,13 +11,13 @@ import { api, fetcher } from "@/lib/api";
 import { REFRESH_MS } from "@/lib/config";
 import { routeName, stationName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
-import type { StationQueues } from "@/lib/types";
+import type { StationQueuesResponse } from "@/lib/types";
 
 export default function StationPage() {
   const t = useT();
   const lang = useLanguage();
   const toast = useToast();
-  const data = useSWR<StationQueues>("/station/queues", fetcher, { refreshInterval: REFRESH_MS });
+  const data = useSWR<StationQueuesResponse>("/station/queues", fetcher, { refreshInterval: REFRESH_MS });
   const [pending, setPending] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [reason, setReason] = useState("");
@@ -42,7 +42,7 @@ export default function StationPage() {
   if (!data.data) return <LoadingState />;
   const station = data.data;
   const needle = query.trim().toLowerCase();
-  const waiting = station.queues.reduce((sum, queue) => sum + queue.entries.length, 0);
+  const waiting = station.routes.reduce((sum, queue) => sum + queue.waiting, 0);
   const taxisHere = station.taxis.filter((taxi) => taxi.status === "AT_STATION" || taxi.status === "LOADING").length;
 
   return (
@@ -59,7 +59,7 @@ export default function StationPage() {
         </article>
         <article className="rounded-[20px] bg-card p-4 shadow-card">
           <p className="text-sm text-muted">{t("station.statLines")}</p>
-          <p className="font-display text-4xl font-bold tabular-nums">{station.queues.length}</p>
+          <p className="font-display text-4xl font-bold tabular-nums">{station.routes.length}</p>
         </article>
       </section>
       <label className="flex max-w-xl flex-col gap-1.5">
@@ -81,7 +81,7 @@ export default function StationPage() {
         ))}
       </section>
       <div className="grid gap-4 lg:grid-cols-2">
-        {station.queues.map((queue) => (
+        {station.routes.map((queue) => (
           <section key={queue.route.id} className="rounded-[20px] bg-card p-4 shadow-card">
             <h2 className="font-display text-xl font-bold">{routeName(queue.route, lang)}</h2>
             <p className="text-sm text-muted">{t("station.waiting", { n: queue.entries.length })}</p>

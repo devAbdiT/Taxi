@@ -5,9 +5,9 @@ import { SeatGrid } from "@/components/kit";
 import { StatusBadge } from "@/components/StatusBadge";
 import { stationName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
-import type { DriverMe } from "@/lib/types";
+import type { DriverMeResponse } from "@/lib/types";
 
-export function TaxiCard({ me }: { me: DriverMe }) {
+export function TaxiCard({ me }: { me: DriverMeResponse }) {
   const t = useT();
   const lang = useLanguage();
   const { taxi, seatsUsed } = me;
