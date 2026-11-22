@@ -1,6 +1,7 @@
 import type { AssistanceType } from "@taxiflow/shared";
 import { hashPassword } from "../lib/auth.js";
 import type { Db } from "../lib/db.js";
+import { STATION_COORDS, routeWaypoints } from "../data/places.js";
 
 export const DEMO_PASSWORD = "demo1234";
 
@@ -58,7 +59,8 @@ const minutesAgo = (now: Date, minutes: number) => new Date(now.getTime() - Math
 /** Deletes every row in one statement. */
 export async function wipeDatabase(db: Db) {
   await db.$executeRaw`
-    TRUNCATE "Rating", "Report", "ContractRequest", "Notification", "QueueEntry",
+    TRUNCATE "Appeal", "Suspension", "ControllerAction", "Dispute", "DriverQueueEntry", "PickupRequest",
+             "TaxiLocation", "DemandHistory", "Rating", "Report", "ContractRequest", "Notification", "QueueEntry",
              "Trip", "Taxi", "User", "Route", "Station"
     CASCADE`;
 }
@@ -71,24 +73,44 @@ export async function seedDemoData(db: Db) {
   await db.$transaction(async (tx) => {
     const stationId: Record<string, string> = {};
     for (const [key, name, nameAm] of STATIONS) {
-      const station = await tx.station.create({ data: { name, nameAm } });
+      const place = STATION_COORDS[name];
+      const station = await tx.station.create({ data: { name, nameAm, lat: place?.lat ?? null, lng: place?.lng ?? null } });
       stationId[key] = station.id;
     }
+    const sid = (key: string): string => {
+      const value = stationId[key];
+      if (!value) throw new Error(`Unknown seed station ${key}`);
+      return value;
+    };
+    const stationName = (key: string): string => STATIONS.find((row) => row[0] === key)?.[1] ?? key;
 
     const routeId: Record<string, string> = {};
     for (const [code, station] of SPOKES) {
       const outbound = await tx.route.create({
-        data: { originId: stationId.merkato, destinationId: stationId[station] },
+        data: {
+          originId: sid("merkato"),
+          destinationId: sid(station),
+          waypoints: routeWaypoints("Merkato", stationName(station)),
+        },
       });
       const back = await tx.route.create({
-        data: { originId: stationId[station], destinationId: stationId.merkato },
+        data: {
+          originId: sid(station),
+          destinationId: sid("merkato"),
+          waypoints: routeWaypoints(stationName(station), "Merkato"),
+        },
       });
       routeId[`mk_${code}`] = outbound.id;
       routeId[`${code}_mk`] = back.id;
     }
+    const rid = (key: string): string => {
+      const value = routeId[key];
+      if (!value) throw new Error(`Unknown seed route ${key}`);
+      return value;
+    };
 
     const user = (name: string, phone: string, role: "PASSENGER" | "DRIVER" | "STATION_REP" | "ADMIN", station?: string) =>
-      tx.user.create({ data: { name, phone, passwordHash, role, stationId: station ? stationId[station] : null } });
+      tx.user.create({ data: { name, phone, passwordHash, role, stationId: station ? sid(station) : null } });
 
     await user("Selam Tadesse", "0911000099", "ADMIN");
     await user("Meron Desta", "0911000011", "STATION_REP", "merkato");
@@ -100,13 +122,13 @@ export async function seedDemoData(db: Db) {
     const hana = await user("Hana Bekele", "0911000100", "PASSENGER");
 
     const kebedeTaxi = await tx.taxi.create({
-      data: { plate: "OR 3-42115", capacity: 14, driverId: kebede.id, status: "AT_STATION", currentStationId: stationId.merkato },
+      data: { plate: "OR 3-42115", capacity: 14, driverId: kebede.id, status: "AT_STATION", currentStationId: sid("merkato") },
     });
     const abebeTaxi = await tx.taxi.create({
       data: { plate: "OR 2-31880", capacity: 16, driverId: abebe.id, status: "OFFLINE" },
     });
     await tx.taxi.create({
-      data: { plate: "OR 3-55012", capacity: 19, driverId: fatuma.id, status: "AT_STATION", currentStationId: stationId.ju },
+      data: { plate: "OR 3-55012", capacity: 19, driverId: fatuma.id, status: "AT_STATION", currentStationId: sid("ju") },
     });
 
     const passengers = await tx.user.createManyAndReturn({
@@ -118,6 +140,11 @@ export async function seedDemoData(db: Db) {
       })),
     });
     passengers.sort((a, b) => a.phone.localeCompare(b.phone));
+    const pid = (index: number): string => {
+      const value = passengers[index]?.id;
+      if (!value) throw new Error(`Unknown seed passenger ${index}`);
+      return value;
+    };
 
     const waitingCount = LINES.reduce((sum, line) => sum + line[1], 0);
     const waiting = [];
@@ -127,8 +154,8 @@ export async function seedDemoData(db: Db) {
         const assistance = help[index] ?? "NONE";
         const minutes = 40 - (person * 39) / (waitingCount - 1);
         waiting.push({
-          passengerId: passengers[person].id,
-          routeId: routeId[routeKey],
+          passengerId: pid(person),
+          routeId: rid(routeKey),
           assistance,
           isPriority: assistance !== "NONE",
           joinedAt: minutesAgo(now, minutes),
@@ -140,7 +167,7 @@ export async function seedDemoData(db: Db) {
     const toUniversity = await tx.trip.create({
       data: {
         taxiId: kebedeTaxi.id,
-        routeId: routeId.mk_ju,
+        routeId: rid("mk_ju"),
         status: "COMPLETED",
         createdAt: minutesAgo(now, 150),
         departedAt: minutesAgo(now, 140),
@@ -150,7 +177,7 @@ export async function seedDemoData(db: Db) {
     const toAwetu = await tx.trip.create({
       data: {
         taxiId: abebeTaxi.id,
-        routeId: routeId.mk_aw,
+        routeId: rid("mk_aw"),
         status: "COMPLETED",
         createdAt: minutesAgo(now, 90),
         departedAt: minutesAgo(now, 80),
@@ -167,7 +194,7 @@ export async function seedDemoData(db: Db) {
       boardedMinutes: number,
     ) => ({
       passengerId,
-      routeId: routeId[routeKey],
+      routeId: rid(routeKey),
       status: "BOARDED" as const,
       assistance: "NONE" as const,
       isPriority: false,
@@ -181,19 +208,19 @@ export async function seedDemoData(db: Db) {
       data: [
         ...waiting,
         boarded(hana.id, "mk_ju", toUniversity.id, 170, 155, 150),
-        boarded(passengers[17].id, "mk_ju", toUniversity.id, 168, 155, 150),
-        boarded(passengers[18].id, "mk_ju", toUniversity.id, 166, 155, 150),
-        boarded(passengers[34].id, "mk_aw", toAwetu.id, 110, 95, 90),
-        boarded(passengers[35].id, "mk_aw", toAwetu.id, 108, 95, 90),
-        boarded(passengers[36].id, "mk_aw", toAwetu.id, 106, 95, 90),
-        boarded(passengers[37].id, "mk_aw", toAwetu.id, 104, 95, 90),
+        boarded(pid(17), "mk_ju", toUniversity.id, 168, 155, 150),
+        boarded(pid(18), "mk_ju", toUniversity.id, 166, 155, 150),
+        boarded(pid(34), "mk_aw", toAwetu.id, 110, 95, 90),
+        boarded(pid(35), "mk_aw", toAwetu.id, 108, 95, 90),
+        boarded(pid(36), "mk_aw", toAwetu.id, 106, 95, 90),
+        boarded(pid(37), "mk_aw", toAwetu.id, 104, 95, 90),
       ],
     });
 
     await tx.report.createMany({
       data: [
         {
-          reporterId: passengers[17].id,
+          reporterId: pid(17),
           tripId: toUniversity.id,
           driverId: kebede.id,
           type: "OVERCHARGING",
@@ -202,7 +229,7 @@ export async function seedDemoData(db: Db) {
           createdAt: minutesAgo(now, 120),
         },
         {
-          reporterId: passengers[34].id,
+          reporterId: pid(34),
           tripId: toAwetu.id,
           driverId: abebe.id,
           type: "DISRESPECT",
@@ -211,7 +238,7 @@ export async function seedDemoData(db: Db) {
           createdAt: minutesAgo(now, 70),
         },
         {
-          reporterId: passengers[20].id,
+          reporterId: pid(20),
           driverId: kebede.id,
           type: "UNSAFE_DRIVING",
           description: "The minibus was driving too fast on the road down from Jiren.",

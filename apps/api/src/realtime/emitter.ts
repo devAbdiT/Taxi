@@ -3,8 +3,13 @@ import {
   QueueStatus,
   SOCKET_EVENTS,
   type DemandUpdatePayload,
+  type DisputeUpdatePayload,
   type NotificationType,
+  type PickupNewPayload,
+  type PickupUpdatePayload,
+  type QueueControlPayload,
   type QueueUpdatePayload,
+  type TaxiLocationPayload,
   type TripUpdatePayload,
 } from "@taxiflow/shared";
 import { prisma } from "../lib/db.js";
@@ -12,7 +17,7 @@ import { seatsUsedOf } from "../lib/serialize.js";
 import { listRoutesWithDemand } from "../services/demand.js";
 import { getMyQueue, listActiveQueueStates } from "../services/queue.js";
 import { leaveRouteRoom } from "./membership.js";
-import { driversRoom, routeRoom, userRoom } from "./rooms.js";
+import { driversRoom, pickupRoom, routeRoom, stationRoom, tripRoom, userRoom } from "./rooms.js";
 import { getIO, socketReady } from "./socket.js";
 
 function report(label: string, err: unknown): void {
@@ -158,5 +163,59 @@ export async function createNotification(input: {
     publishNotification(notification);
   } catch (err) {
     report("createNotification failed", err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Advanced features. All of these are called from the service layer after the transaction commits.
+// ---------------------------------------------------------------------------
+
+export function publishDispute(payload: DisputeUpdatePayload, userIds: string[]): void {
+  if (!socketReady()) return;
+  try {
+    const io = getIO();
+    io.to(stationRoom(payload.stationId)).emit(SOCKET_EVENTS.DISPUTE_UPDATE, payload);
+    for (const userId of new Set(userIds)) io.to(userRoom(userId)).emit(SOCKET_EVENTS.DISPUTE_UPDATE, payload);
+  } catch (err) {
+    report("publishDispute failed", err);
+  }
+}
+
+export function publishQueueControl(userId: string, payload: QueueControlPayload): void {
+  if (!socketReady()) return;
+  try {
+    getIO().to(userRoom(userId)).emit(SOCKET_EVENTS.QUEUE_CONTROL, payload);
+  } catch (err) {
+    report("publishQueueControl failed", err);
+  }
+}
+
+export function publishTaxiLocation(payload: TaxiLocationPayload): void {
+  if (!socketReady()) return;
+  try {
+    const io = getIO();
+    if (payload.tripId) io.to(tripRoom(payload.tripId)).emit(SOCKET_EVENTS.TAXI_LOCATION, payload);
+    if (payload.pickupId) io.to(pickupRoom(payload.pickupId)).emit(SOCKET_EVENTS.TAXI_LOCATION, payload);
+  } catch (err) {
+    report("publishTaxiLocation failed", err);
+  }
+}
+
+export function publishPickupNew(userId: string, payload: PickupNewPayload): void {
+  if (!socketReady()) return;
+  try {
+    getIO().to(userRoom(userId)).emit(SOCKET_EVENTS.PICKUP_NEW, payload);
+  } catch (err) {
+    report("publishPickupNew failed", err);
+  }
+}
+
+export function publishPickupUpdate(userIds: string[], payload: PickupUpdatePayload): void {
+  if (!socketReady()) return;
+  try {
+    const io = getIO();
+    for (const userId of new Set(userIds)) io.to(userRoom(userId)).emit(SOCKET_EVENTS.PICKUP_UPDATE, payload);
+  } catch (err) {
+    report("publishPickupUpdate failed", err);
   }
 }

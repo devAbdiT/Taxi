@@ -36,6 +36,21 @@ import {
   StationsResponse,
   TripResponse,
   UpdateReportResponse,
+  LocationConsentResponse,
+  TaxiLocationResponse,
+  NearbyTaxisResponse,
+  FleetResponse,
+  CreatePickupResponse,
+  MyPickupResponse,
+  NearbyPickupsResponse,
+  DriverPickupResponse,
+  StationDeskResponse,
+  AlertsResponse,
+  DisputesResponse,
+  StationActionResponse,
+  WaitEstimateResponse,
+  DemandForecastResponse,
+  InsightsResponse,
 } from "@taxiflow/shared";
 
 const API = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -90,8 +105,8 @@ async function call<T>(
   }
   const parsed = schema.safeParse(data);
   if (!parsed.success) {
-    const issue = parsed.error.issues[0];
-    fail(name, issue ? `${issue.path.join(".") || "(root)"}: ${issue.message}` : "schema mismatch");
+    const issue = (parsed as any).error?.issues?.[0];
+    fail(name, issue ? `${issue.path?.join(".") || "(root)"}: ${issue.message}` : "schema mismatch");
     return null;
   }
   pass(name);
@@ -325,6 +340,43 @@ async function main() {
   if (admin && !results.some((item) => item.name === "GET /admin/stats")) {
     await call("GET /admin/stats", admin, "GET", "/admin/stats", undefined, AdminStatsResponse, 200);
     await call("GET /admin/reports", admin, "GET", "/admin/reports", undefined, AdminReportsResponse, 200);
+  }
+
+  // --- Advanced Features Contract Checks ---
+  if (passenger) {
+    await call("POST /me/location-consent (passenger)", passenger, "POST", "/me/location-consent", { granted: true }, LocationConsentResponse, 200);
+    await call("GET /taxis/nearby", passenger, "GET", "/taxis/nearby?lat=7.6686&lng=36.8313&radiusKm=5", undefined, NearbyTaxisResponse, 200);
+    const pickupReq = await call<CreatePickupResponse>(
+      "POST /pickups",
+      passenger,
+      "POST",
+      "/pickups",
+      { lat: 7.6686, lng: 36.8313, seats: 1, placeNote: "Test Pickup" },
+      CreatePickupResponse,
+      201,
+    );
+    await call("GET /pickups/mine", passenger, "GET", "/pickups/mine", undefined, MyPickupResponse, 200);
+
+    // AI wait estimate
+    await call("GET /ai/wait-estimate", passenger, "GET", "/ai/wait-estimate?routeId=rt_ju_mk", undefined, WaitEstimateResponse, 200);
+  }
+
+  if (driver) {
+    await call("POST /me/location-consent (driver)", driver, "POST", "/me/location-consent", { granted: true }, LocationConsentResponse, 200);
+    await call("POST /taxis/me/location", driver, "POST", "/taxis/me/location", { lat: 7.6686, lng: 36.8313, accuracyM: 10 }, TaxiLocationResponse, 200);
+    await call("GET /driver/pickups/nearby", driver, "GET", "/driver/pickups/nearby", undefined, NearbyPickupsResponse, 200);
+    await call("GET /ai/demand-forecast", driver, "GET", "/ai/demand-forecast?stationId=st_merkato", undefined, DemandForecastResponse, 200);
+  }
+
+  if (station) {
+    await call("GET /station/desk", station, "GET", "/station/desk", undefined, StationDeskResponse, 200);
+    await call("GET /station/alerts", station, "GET", "/station/alerts", undefined, AlertsResponse, 200);
+    await call("GET /station/disputes", station, "GET", "/station/disputes", undefined, DisputesResponse, 200);
+  }
+
+  if (admin) {
+    await call("GET /admin/fleet", admin, "GET", "/admin/fleet", undefined, FleetResponse, 200);
+    await call("GET /admin/ai/insights", admin, "GET", "/admin/ai/insights?days=7", undefined, InsightsResponse, 200);
   }
 
   await call("POST /dev/reset (end)", null, "POST", "/dev/reset", {}, DevResetResponse, 200);

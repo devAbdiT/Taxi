@@ -53,6 +53,11 @@ export function useLive() {
       client.on("queue:update", refresh);
       client.on("notification:new", refresh);
       client.on("trip:update", refresh);
+      client.on("dispute:update", refresh);
+      client.on("queue:control", refresh);
+      client.on("taxi:location", refresh);
+      client.on("pickup:new", refresh);
+      client.on("pickup:update", refresh);
       socket = client;
     }).catch(() => undefined);
 

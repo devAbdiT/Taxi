@@ -87,6 +87,29 @@ export default function PassengerRoutesPage() {
       <h1 className="font-display text-3xl font-bold">{t("home.welcome", { name: user.name.split(" ")[0] })}</h1>
       <p className="text-muted">{t("passenger.title")}</p>
 
+      {/* GPS On-Demand Pickup Banner */}
+      <Link
+        href="/passenger/pickup"
+        className="flex items-center justify-between rounded-2xl border-2 border-taxi bg-taxi/15 p-4 transition hover:bg-taxi/25 active:scale-[.99]"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex size-11 items-center justify-center rounded-full bg-taxi text-ink font-bold">
+            <Icon name="car" className="size-6" />
+          </div>
+          <div>
+            <h2 className="font-display text-base font-bold text-ink">
+              {t("pickup.title", "Request a Pickup")}
+            </h2>
+            <p className="text-xs text-muted">
+              {t("pickup.subtitle", "Get picked up by an available taxi nearby")}
+            </p>
+          </div>
+        </div>
+        <span className="flex size-8 items-center justify-center rounded-full bg-card border border-line text-ink">
+          <Icon name="arrowRight" className="size-4" />
+        </span>
+      </Link>
+
       {activeEntry && activeRoute && (
         <div className="flex flex-col gap-1 rounded-[20px] bg-go-soft p-4 text-ink">
           <p className="font-semibold">{t("passenger.inQueueBanner", { route: routeName(activeRoute, lang) })}</p>

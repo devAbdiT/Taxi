@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import useSWR from "swr";
 import { Button } from "@/components/Button";
@@ -7,6 +8,7 @@ import { AnimatedNumber } from "@/components/kit";
 import { useToast } from "@/components/Providers";
 import { EmptyState, ErrorState, LoadingState } from "@/components/States";
 import { StatusBadge } from "@/components/StatusBadge";
+import { FleetMap } from "@/components/FleetMap";
 import { api, fetcher } from "@/lib/api";
 import { REFRESH_MS } from "@/lib/config";
 import { routeName } from "@/lib/format";
@@ -63,7 +65,29 @@ export default function AdminPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-display text-3xl font-bold">{t("admin.title")}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="font-display text-3xl font-bold">{t("admin.title")}</h1>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/admin/insights"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-line bg-card px-3.5 text-xs font-bold text-ink hover:border-taxi hover:bg-taxi/20 transition"
+          >
+            ⚡ AI Insights
+          </Link>
+          <Link
+            href="/admin/appeals"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-line bg-card px-3.5 text-xs font-bold text-ink hover:bg-sky/50 transition"
+          >
+            ⚖️ Controller Appeals
+          </Link>
+          <Link
+            href="/admin/audit-log"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-line bg-card px-3.5 text-xs font-bold text-ink hover:bg-sky/50 transition"
+          >
+            📜 Audit Trail
+          </Link>
+        </div>
+      </div>
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label={t("admin.wait")} value={waitMinutes} suffix={t("admin.minutes")} />
         <Stat label={t("admin.trips")} value={stats.data.tripsToday} />
@@ -151,6 +175,11 @@ export default function AdminPage() {
           </article>
         ))}
         </div>
+      </section>
+
+      {/* Live Fleet Overview Map */}
+      <section className="rounded-[20px] bg-card p-5 shadow-card">
+        <FleetMap className="h-80 w-full rounded-xl overflow-hidden" />
       </section>
     </div>
   );

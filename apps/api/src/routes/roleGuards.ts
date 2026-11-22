@@ -15,5 +15,13 @@ const DRIVER_OR_REP: Role[] = ["DRIVER", "STATION_REP"];
 roleGuards.use("/driver", requireAuth, (req, res, next) => {
   requireRole(...(SHARED_WITH_REPS.test(req.path) ? DRIVER_OR_REP : DRIVER_ONLY))(req, res, next);
 });
-roleGuards.use("/station", requireAuth, requireRole("STATION_REP"));
-roleGuards.use("/admin", requireAuth, requireRole("ADMIN"));
+// The control desk endpoints are also open to administrators, who act on any station.
+const STATION_OR_ADMIN = /^\/(desk|alerts|actions|audit-log|disputes(\/[^/]+)?)\/?$/;
+const ADMIN_OR_REP = /^\/(ai\/insights|fleet)\/?$/;
+
+roleGuards.use("/station", requireAuth, (req, res, next) => {
+  requireRole(...(STATION_OR_ADMIN.test(req.path) ? (["STATION_REP", "ADMIN"] as Role[]) : (["STATION_REP"] as Role[])))(req, res, next);
+});
+roleGuards.use("/admin", requireAuth, (req, res, next) => {
+  requireRole(...(ADMIN_OR_REP.test(req.path) ? (["ADMIN", "STATION_REP"] as Role[]) : (["ADMIN"] as Role[])))(req, res, next);
+});

@@ -40,3 +40,13 @@ export const registerLimiter = rateLimit({
   legacyHeaders: false,
   message: rateLimitedBody,
 });
+
+/** 5 disputes per user per hour. Use after requireAuth. */
+export const disputeLimiter = rateLimit({
+  windowMs: 3_600_000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: rateLimitedBody,
+  keyGenerator: (req) => req.auth?.userId ?? ipKeyGenerator(req.ip ?? "127.0.0.1"),
+});

@@ -1,4 +1,7 @@
+
+
 @import "tailwindcss";
+
 
 @theme inline {
   --font-sans: var(--font-noto-latin), var(--font-noto-ethiopic), system-ui, sans-serif;

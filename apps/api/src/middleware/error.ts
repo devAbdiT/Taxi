@@ -19,7 +19,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
 
   if (err instanceof AppError) {
     status = err.status;
-    body = { error: err.code, message: err.message };
+    body = { error: err.code, message: err.message, ...err.extra };
   } else if (err instanceof ZodError) {
     status = 400;
     body = {

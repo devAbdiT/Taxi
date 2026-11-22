@@ -96,7 +96,7 @@ function DemoPanel() {
       {open && (
         <div className="rise flex w-72 max-w-full flex-col gap-2 rounded-[20px] border border-line bg-card p-3 shadow-card">
           <p className="font-display text-lg font-bold">{t("demo.title")}</p>
-          {USE_MOCKS && (
+          {USE_MOCKS ? (
             <>
               <Button onClick={() => { demoJoin(false); toast(t("demo.done")); }} fullWidth>{t("demo.join")}</Button>
               <Button onClick={() => { demoJoin(true); toast(t("demo.done")); }} fullWidth>{t("demo.priority")}</Button>
@@ -104,6 +104,47 @@ function DemoPanel() {
               <Button onClick={() => { demoBumpMe(); toast(t("demo.done")); }} fullWidth>{t("demo.bump")}</Button>
               <Button onClick={() => void demoCompleteTrip().then(() => toast(t("demo.done")))} fullWidth>{t("demo.complete")}</Button>
             </>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    await api.createDispute({
+                      type: "LINE_JUMPING",
+                      description: "Demo: passenger jumped the queue ahead of priority turn",
+                    });
+                    toast("Demo dispute created");
+                  } catch (err: any) {
+                    toast(err?.message ?? "Failed to create dispute");
+                  }
+                }}
+                className="text-xs py-2 min-h-9"
+                fullWidth
+              >
+                ⚠️ Create Demo Dispute
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    await api.createPickup({
+                      lat: 7.6686,
+                      lng: 36.8313,
+                      seats: 1,
+                      placeNote: "Awetu Mall gate (Demo)",
+                    });
+                    toast("Demo pickup created near me");
+                  } catch (err: any) {
+                    toast(err?.message ?? "Failed to create pickup");
+                  }
+                }}
+                className="text-xs py-2 min-h-9"
+                fullWidth
+              >
+                📍 Create Pickup Near Me
+              </Button>
+            </div>
           )}
           <Button variant="secondary" onClick={() => void reset()} loading={busy} fullWidth>
             {t("demo.reset")}

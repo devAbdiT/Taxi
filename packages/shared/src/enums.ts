@@ -54,5 +54,44 @@ export const NotificationType = z.enum([
   "REPORT_FILED",
   "REPORT_UPDATED",
   "SYSTEM",
+  "CONTROLLER_ACTION",
+  "DISPUTE_UPDATE",
+  "APPEAL_UPDATE",
+  "PICKUP_UPDATE",
 ]);
 export type NotificationType = z.infer<typeof NotificationType>;
+
+export const DisputeType = z.enum(["LINE_JUMPING", "PRIORITY_CLAIM", "DRIVER_SKIPPED_TURN", "FARE_DISPUTE", "BEHAVIOR", "OTHER"]);
+export type DisputeType = z.infer<typeof DisputeType>;
+
+export const DisputeStatus = z.enum(["OPEN", "IN_REVIEW", "RESOLVED", "APPEALED"]);
+export type DisputeStatus = z.infer<typeof DisputeStatus>;
+
+export const ControllerActionType = z.enum([
+  "WARN",
+  "MOVE_BACK",
+  "MOVE_FORWARD",
+  "CONFIRM_PRIORITY",
+  "REJECT_PRIORITY",
+  "MARK_NO_SHOW",
+  "REMOVE",
+  "SUSPEND",
+  "ALLOW_OUT_OF_TURN",
+  "REORDER_DRIVER",
+  "RESOLVE_DISPUTE",
+  "APPEAL_REVERSED",
+]);
+export type ControllerActionType = z.infer<typeof ControllerActionType>;
+
+export const AppealStatus = z.enum(["OPEN", "UPHELD", "REVERSED"]);
+export type AppealStatus = z.infer<typeof AppealStatus>;
+
+export const DriverQueueStatus = z.enum(["WAITING", "LOADING", "DEPARTED", "LEFT"]);
+export type DriverQueueStatus = z.infer<typeof DriverQueueStatus>;
+
+export const PickupStatus = z.enum(["OPEN", "ACCEPTED", "ARRIVED", "COMPLETED", "CANCELLED", "EXPIRED"]);
+export type PickupStatus = z.infer<typeof PickupStatus>;
+
+/** Every AI answer says how it was made. "llm" is only ever used to phrase text. */
+export const AiMethod = z.enum(["statistics", "rules", "llm"]);
+export type AiMethod = z.infer<typeof AiMethod>;

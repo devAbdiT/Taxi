@@ -57,6 +57,63 @@ enum NotificationType {
   REPORT_FILED
   REPORT_UPDATED
   SYSTEM
+  CONTROLLER_ACTION
+  DISPUTE_UPDATE
+  APPEAL_UPDATE
+  PICKUP_UPDATE
+}
+
+enum DisputeType {
+  LINE_JUMPING
+  PRIORITY_CLAIM
+  DRIVER_SKIPPED_TURN
+  FARE_DISPUTE
+  BEHAVIOR
+  OTHER
+}
+
+enum DisputeStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  APPEALED
+}
+
+enum ControllerActionType {
+  WARN
+  MOVE_BACK
+  MOVE_FORWARD
+  CONFIRM_PRIORITY
+  REJECT_PRIORITY
+  MARK_NO_SHOW
+  REMOVE
+  SUSPEND
+  ALLOW_OUT_OF_TURN
+  REORDER_DRIVER
+  RESOLVE_DISPUTE
+  APPEAL_REVERSED
+}
+
+enum AppealStatus {
+  OPEN
+  UPHELD
+  REVERSED
+}
+
+enum DriverQueueStatus {
+  WAITING
+  LOADING
+  DEPARTED
+  LEFT
+}
+
+enum PickupStatus {
+  OPEN
+  ACCEPTED
+  ARRIVED
+  COMPLETED
+  CANCELLED
+  EXPIRED
 }
 
 enum ReportType {
@@ -105,6 +162,19 @@ model User {
   reportsAbout     Report[]          @relation("ReportedDriver")
   contractRequests ContractRequest[]
   createdAt        DateTime          @default(now())
+
+  // Advanced features: GPS consent, disputes, audit trail, suspensions, appeals, pickups.
+  locationConsentAt DateTime?
+  disputesOpened    Dispute[]          @relation("DisputeOpener")
+  disputesAgainst   Dispute[]          @relation("DisputeTarget")
+  disputesResolved  Dispute[]          @relation("DisputeResolver")
+  actionsTaken      ControllerAction[] @relation("ActionActor")
+  actionsReceived   ControllerAction[] @relation("ActionTarget")
+  suspensions       Suspension[]
+  appeals           Appeal[]           @relation("Appellant")
+  appealsDecided    Appeal[]           @relation("AppealDecider")
+  driverQueueEntries DriverQueueEntry[]
+  pickups           PickupRequest[]
 }
 
 model Station {
@@ -115,6 +185,14 @@ model Station {
   routesFrom Route[] @relation("Origin")
   routesTo   Route[] @relation("Destination")
   taxis      Taxi[]
+
+  // Approximate coordinates, see src/data/places.ts.
+  lat         Float?
+  lng         Float?
+  disputes    Dispute[]
+  actions     ControllerAction[]
+  suspensions Suspension[]
+  driverQueue DriverQueueEntry[]
 }
 
 model Route {
@@ -125,6 +203,11 @@ model Route {
   destination   Station      @relation("Destination", fields: [destinationId], references: [id])
   trips         Trip[]
   queueEntries  QueueEntry[]
+
+  // Ordered [lat, lng] pairs from origin to destination. Approximate.
+  waypoints     Json?
+  driverQueue   DriverQueueEntry[]
+  demandHistory DemandHistory[]
 
   @@unique([originId, destinationId])
 }
@@ -139,6 +222,10 @@ model Taxi {
   currentStationId String?
   currentStation   Station?   @relation(fields: [currentStationId], references: [id])
   trips            Trip[]
+
+  location         TaxiLocation?
+  driverQueue      DriverQueueEntry[]
+  pickups          PickupRequest[]
 }
 
 model Trip {
@@ -154,6 +241,7 @@ model Trip {
   entries    QueueEntry[]
   ratings    Rating[]
   reports    Report[]
+  disputes   Dispute[]
 }
 
 model QueueEntry {
@@ -171,7 +259,17 @@ model QueueEntry {
   tripId      String?
   trip        Trip?          @relation(fields: [tripId], references: [id])
 
+  // Queue order is isPriority desc, then sortKey. A trigger copies joinedAt into sortKey on insert.
+  // Controllers move people by changing sortKey only. joinedAt is never edited.
+  sortKey          DateTime @default(now())
+  priorityVerified Boolean  @default(false)
+  // True for the seeded 14-day history that feeds the wait estimate.
+  synthetic        Boolean  @default(false)
+  disputes         Dispute[]
+  actions          ControllerAction[]
+
   @@index([routeId, status, isPriority, joinedAt])
+  @@index([routeId, status, isPriority, sortKey])
 }
 
 model Notification {
@@ -229,4 +327,158 @@ model ContractRequest {
   notes          String?
   status         ContractStatus @default(NEW)
   createdAt      DateTime       @default(now())
+}
+
+model Dispute {
+  id             String        @id @default(cuid())
+  stationId      String
+  station        Station       @relation(fields: [stationId], references: [id])
+  type           DisputeType
+  status         DisputeStatus @default(OPEN)
+  openedById     String
+  openedBy       User          @relation("DisputeOpener", fields: [openedById], references: [id])
+  againstUserId  String?
+  againstUser    User?         @relation("DisputeTarget", fields: [againstUserId], references: [id])
+  queueEntryId   String?
+  queueEntry     QueueEntry?   @relation(fields: [queueEntryId], references: [id])
+  tripId         String?
+  trip           Trip?         @relation(fields: [tripId], references: [id])
+  description    String
+  resolutionNote String?
+  resolvedById   String?
+  resolvedBy     User?         @relation("DisputeResolver", fields: [resolvedById], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  resolvedAt     DateTime?
+  actions        ControllerAction[]
+  appeals        Appeal[]
+
+  @@index([stationId, status, createdAt])
+}
+
+/// APPEND-ONLY audit log. A database trigger rejects UPDATE and DELETE.
+model ControllerAction {
+  id                  String               @id @default(cuid())
+  stationId           String
+  station             Station              @relation(fields: [stationId], references: [id])
+  actorId             String
+  actor               User                 @relation("ActionActor", fields: [actorId], references: [id])
+  action              ControllerActionType
+  targetUserId        String?
+  targetUser          User?                @relation("ActionTarget", fields: [targetUserId], references: [id])
+  queueEntryId        String?
+  queueEntry          QueueEntry?          @relation(fields: [queueEntryId], references: [id])
+  driverQueueEntryId  String?
+  driverQueueEntry    DriverQueueEntry?    @relation(fields: [driverQueueEntryId], references: [id])
+  disputeId           String?
+  dispute             Dispute?             @relation(fields: [disputeId], references: [id])
+  reason              String
+  details             Json?
+  createdAt           DateTime             @default(now())
+  appeals             Appeal[]
+  suspension          Suspension?
+
+  @@index([stationId, createdAt])
+}
+
+model Suspension {
+  id                 String           @id @default(cuid())
+  userId             String
+  user               User             @relation(fields: [userId], references: [id])
+  stationId          String
+  station            Station          @relation(fields: [stationId], references: [id])
+  reason             String
+  startsAt           DateTime         @default(now())
+  endsAt             DateTime
+  createdByActionId  String           @unique
+  createdByAction    ControllerAction @relation(fields: [createdByActionId], references: [id])
+  liftedAt           DateTime?
+
+  @@index([userId, endsAt])
+}
+
+model Appeal {
+  id          String       @id @default(cuid())
+  actionId    String?      @unique
+  action      ControllerAction? @relation(fields: [actionId], references: [id])
+  disputeId   String?
+  dispute     Dispute?     @relation(fields: [disputeId], references: [id])
+  userId      String
+  user        User         @relation("Appellant", fields: [userId], references: [id])
+  reason      String
+  status      AppealStatus @default(OPEN)
+  adminNote   String?
+  decidedById String?
+  decidedBy   User?        @relation("AppealDecider", fields: [decidedById], references: [id])
+  createdAt   DateTime     @default(now())
+  decidedAt   DateTime?
+
+  @@unique([disputeId, userId])
+}
+
+model DriverQueueEntry {
+  id                 String            @id @default(cuid())
+  taxiId             String
+  taxi               Taxi              @relation(fields: [taxiId], references: [id])
+  driverId           String
+  driver             User              @relation(fields: [driverId], references: [id])
+  stationId          String
+  station            Station           @relation(fields: [stationId], references: [id])
+  routeId            String?
+  route              Route?            @relation(fields: [routeId], references: [id])
+  status             DriverQueueStatus @default(WAITING)
+  joinedAt           DateTime          @default(now())
+  sortKey            DateTime          @default(now())
+  outOfTurnGrantedAt DateTime?
+  startedOutOfTurn   Boolean           @default(false)
+  actions            ControllerAction[]
+
+  @@index([stationId, status, sortKey])
+}
+
+model TaxiLocation {
+  id         String   @id @default(cuid())
+  taxiId     String   @unique
+  taxi       Taxi     @relation(fields: [taxiId], references: [id])
+  lat        Float
+  lng        Float
+  heading    Float?
+  speedKmh   Float?
+  accuracyM  Float?
+  updatedAt  DateTime @default(now())
+}
+
+model PickupRequest {
+  id               String       @id @default(cuid())
+  passengerId      String
+  passenger        User         @relation(fields: [passengerId], references: [id])
+  /// Exact position. Set to null when the pickup is COMPLETED, CANCELLED or EXPIRED.
+  lat              Float?
+  lng              Float?
+  placeNote        String?
+  seats            Int
+  status           PickupStatus @default(OPEN)
+  acceptedTaxiId   String?
+  acceptedTaxi     Taxi?        @relation(fields: [acceptedTaxiId], references: [id])
+  acceptedAt       DateTime?
+  expiresAt        DateTime
+  createdAt        DateTime     @default(now())
+  cancelReason     String?
+  notifiedDriverIds String[]
+  widenedAt        DateTime?
+
+  @@index([status, expiresAt])
+}
+
+model DemandHistory {
+  id             String   @id @default(cuid())
+  routeId        String
+  route          Route    @relation(fields: [routeId], references: [id])
+  date           DateTime @db.Date
+  hour           Int
+  joins          Int
+  avgWaitSeconds Float?
+  synthetic      Boolean  @default(true)
+
+  @@index([routeId, date, hour])
 }

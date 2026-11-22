@@ -15,6 +15,7 @@ import { conflict, notFound } from "../lib/errors.js";
 import { toQueueEntry } from "../lib/serialize.js";
 import { publishQueueChange } from "../realtime/emitter.js";
 import { joinRouteRoom } from "../realtime/membership.js";
+import { assertNotSuspended } from "./suspension.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -35,7 +36,7 @@ export async function positionOf(tx: Tx, entry: { id: string; routeId: string })
   const rows = await tx.$queryRaw<{ position: bigint }[]>`
     SELECT ranked.position
     FROM (
-      SELECT id, ROW_NUMBER() OVER (ORDER BY "isPriority" DESC, "joinedAt" ASC, id ASC) AS position
+      SELECT id, ROW_NUMBER() OVER (ORDER BY "isPriority" DESC, "sortKey" ASC, id ASC) AS position
       FROM "QueueEntry"
       WHERE "routeId" = ${entry.routeId} AND status = 'WAITING'
     ) AS ranked
@@ -54,7 +55,7 @@ export async function listActiveQueueStates(routeId: string): Promise<{ passenge
            CASE WHEN q.status = 'CALLED' THEN taxi.plate ELSE NULL END AS "taxiPlate"
     FROM "QueueEntry" q
     LEFT JOIN (
-      SELECT id, ROW_NUMBER() OVER (ORDER BY "isPriority" DESC, "joinedAt" ASC, id ASC) AS position
+      SELECT id, ROW_NUMBER() OVER (ORDER BY "isPriority" DESC, "sortKey" ASC, id ASC) AS position
       FROM "QueueEntry"
       WHERE "routeId" = ${routeId} AND status = 'WAITING'
     ) AS ranked ON ranked.id = q.id
@@ -80,6 +81,8 @@ export async function joinQueue(passengerId: string, body: z.output<typeof JoinQ
       if (!route) {
         throw notFound("route_not_found", "This route does not exist");
       }
+
+      await assertNotSuspended(tx, passengerId);
 
       const active = await tx.queueEntry.findFirst({
         where: { passengerId, status: { in: activeStatuses } },

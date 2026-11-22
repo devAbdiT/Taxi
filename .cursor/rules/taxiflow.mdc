@@ -1,0 +1,12 @@
+---
+description: TaxiFlow project rules
+alwaysApply: true
+---
+- The specification is docs/FEATURES_RULES.md. Progress is docs/FEATURES_STATUS.md. Read both at the start of every chat.
+- Do ONLY the stage(s) the user names, then print the stage report and stop. Never start the next stage.
+- Audit first: classify items DONE, PARTIAL or MISSING by reading the code. Build only PARTIAL and MISSING. Never rewrite DONE items.
+- Run real commands (tests, build, check scripts) and paste real output. Never say "should work".
+- Local only. No git commands. No deployment. No new packages except the ones allowed in the rules file.
+- Backend: Zod validation, requireRole, Prisma transactions, standard { error, message } errors, realtime emits only after commit from the service layer.
+- Frontend: loading, empty and error states, 48 px buttons, no raw error codes, every label in en.json and am.json, mock mode and real mode return the same shapes.
+- Keep context small: search the codebase instead of reading whole files, and keep edits small.

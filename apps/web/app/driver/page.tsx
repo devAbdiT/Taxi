@@ -7,6 +7,8 @@ import { ReturnCard } from "@/components/driver/ReturnCard";
 import { StartLoading } from "@/components/driver/StartLoading";
 import { TaxiCard } from "@/components/driver/TaxiCard";
 import { TripPanel } from "@/components/driver/TripPanel";
+import { DriverGpsPanel } from "@/components/driver/DriverGpsPanel";
+import { DriverForecastCard } from "@/components/driver/DriverForecastCard";
 import { ErrorState, LoadingState } from "@/components/States";
 import { fetcher } from "@/lib/api";
 import { REFRESH_MS } from "@/lib/config";
@@ -29,6 +31,8 @@ export default function DriverPage() {
       <div className="flex flex-col gap-5">
       <TaxiCard me={me.data} />
 
+      <DriverGpsPanel />
+
       {activeTrip ? (
         <TripPanel tripId={activeTrip.id} waiting={waitingOn(activeTrip.route.id)} onChanged={refresh} />
       ) : canArrive ? (
@@ -46,6 +50,7 @@ export default function DriverPage() {
         <LoadingState />
       ) : (
         <>
+          <DriverForecastCard stationId={taxi.currentStation?.id ?? null} />
           {demand.data.returnSuggestion && <ReturnCard suggestion={demand.data.returnSuggestion} />}
           <DemandBoard routes={demand.data.routes} currentStationId={taxi.currentStation?.id ?? null} />
         </>
