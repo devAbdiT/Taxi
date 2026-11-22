@@ -38,11 +38,55 @@ export const ReturnSuggestion = z.object({
 });
 export type ReturnSuggestion = z.infer<typeof ReturnSuggestion>;
 
-/** GET /driver/demand. Routes sorted by waiting, highest first. */
+/** A driver operates between two designated stations (a reciprocal 2-route corridor). */
+export const DriverCorridor = z.object({
+  id: z.string(),
+  name: z.string(),
+  stationA: z.object({ id: z.string(), name: z.string(), nameAm: z.string().nullable().optional() }),
+  stationB: z.object({ id: z.string(), name: z.string(), nameAm: z.string().nullable().optional() }),
+  routeIds: z.array(z.string()),
+});
+export type DriverCorridor = z.infer<typeof DriverCorridor>;
+
+export const DriverCorridorResponse = z.object({
+  current: DriverCorridor,
+  available: z.array(DriverCorridor),
+});
+export type DriverCorridorResponse = z.infer<typeof DriverCorridorResponse>;
+
+export const SetDriverCorridorRequest = z.object({
+  corridorId: z.string(),
+});
+export type SetDriverCorridorRequest = z.input<typeof SetDriverCorridorRequest>;
+
+/** AI-generated dispatch recommendation when there is a task/passenger shortage on the driver's route. */
+export const ShortageRecommendation = z.object({
+  hasShortage: z.boolean(),
+  corridorName: z.string(),
+  currentDemand: z.number().int(),
+  suggestedStation: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      waitingCount: z.number().int(),
+    })
+    .nullable(),
+  message: z.string(),
+  method: z.enum(["llm", "statistics", "rules"]),
+  basedOnSamples: z.number().int(),
+  synthetic: z.boolean(),
+});
+export type ShortageRecommendation = z.infer<typeof ShortageRecommendation>;
+
+/** GET /driver/demand. Routes on driver's assigned corridor, sorted by waiting. */
 export const DriverDemandResponse = z.object({
   routes: z.array(DemandRoute),
   /** Null unless the taxi has an active trip whose reverse route exists. */
   returnSuggestion: ReturnSuggestion.nullable(),
+  /** AI recommendation generated when passenger demand on the corridor is low. */
+  shortageRecommendation: ShortageRecommendation.nullable().optional(),
+  /** The 2-route corridor the driver operates between. */
+  assignedCorridor: DriverCorridor.nullable().optional(),
 });
 export type DriverDemandResponse = z.infer<typeof DriverDemandResponse>;
 

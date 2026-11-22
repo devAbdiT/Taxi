@@ -8,6 +8,8 @@ import type {
   AdminReport,
   AssistanceType,
   ContractRequest,
+  DriverCorridor,
+  DriverCorridorResponse,
   DriverDemandResponse,
   DriverMeResponse,
   DriverTrip,
@@ -22,6 +24,7 @@ import type {
   Role,
   RouteSummary,
   RouteWithDemand,
+  ShortageRecommendation,
   Station,
   StationQueueEntry,
   TaxiStatus,
@@ -595,6 +598,58 @@ class Created {
 }
 const created = (data: unknown) => new Created(data);
 
+const mockDriverCorridorMap = new Map<string, string>();
+
+function mockCorridors(): DriverCorridor[] {
+  const routesList = load().routes;
+  const stations = load().stations;
+  const corridorMap = new Map<string, { stationAId: string; stationBId: string; routeIds: string[] }>();
+  for (const r of routesList) {
+    const orig = stations.find((s) => s.id === r.originId);
+    const dest = stations.find((s) => s.id === r.destinationId);
+    if (!orig || !dest) continue;
+    const isAFirst = orig.name.localeCompare(dest.name) < 0;
+    const key = isAFirst ? `${r.originId}_${r.destinationId}` : `${r.destinationId}_${r.originId}`;
+    const existing = corridorMap.get(key);
+    if (existing) {
+      if (!existing.routeIds.includes(r.id)) existing.routeIds.push(r.id);
+    } else {
+      corridorMap.set(key, {
+        stationAId: isAFirst ? orig.id : dest.id,
+        stationBId: isAFirst ? dest.id : orig.id,
+        routeIds: [r.id],
+      });
+    }
+  }
+  return Array.from(corridorMap.entries()).map(([id, c]) => {
+    const sA = station(c.stationAId);
+    const sB = station(c.stationBId);
+    return {
+      id,
+      name: `${sA.name} ⇄ ${sB.name}`,
+      stationA: sA,
+      stationB: sB,
+      routeIds: c.routeIds,
+    };
+  });
+}
+
+function driverCorridor(userId: string): DriverCorridor {
+  const corridors = mockCorridors();
+  const explicitlySet = mockDriverCorridorMap.get(userId);
+  if (explicitlySet) {
+    const found = corridors.find((c) => c.id === explicitlySet);
+    if (found) return found;
+  }
+  // Default Kebede or others to Jiren ⇄ Merkato if available
+  const jirenMerkato = corridors.find(
+    (c) =>
+      (c.stationA.name.toLowerCase().includes("jiren") && c.stationB.name.toLowerCase().includes("merkato")) ||
+      (c.stationB.name.toLowerCase().includes("jiren") && c.stationA.name.toLowerCase().includes("merkato")),
+  );
+  return jirenMerkato ?? corridors[0];
+}
+
 const ALL_ROLES: Role[] = ["PASSENGER", "DRIVER", "STATION_REP", "ADMIN"];
 
 const routes: RouteDef[] = [
@@ -865,21 +920,74 @@ const routes: RouteDef[] = [
   },
   {
     method: "GET",
+    pattern: "/driver/corridor",
+    roles: ["DRIVER"],
+    handler: ({ user }): DriverCorridorResponse => {
+      return {
+        current: driverCorridor(user.id),
+        available: mockCorridors(),
+      };
+    },
+  },
+  {
+    method: "PUT",
+    pattern: "/driver/corridor",
+    roles: ["DRIVER"],
+    handler: ({ user, body }): DriverCorridor => {
+      const corridorId = requireText(body?.corridorId, "corridorId");
+      mockDriverCorridorMap.set(user.id, corridorId);
+      return driverCorridor(user.id);
+    },
+  },
+  {
+    method: "GET",
     pattern: "/driver/demand",
     roles: ["DRIVER"],
     handler: ({ user }): DriverDemandResponse => {
       const taxi = taxiForDriver(user.id);
-      const routes = load()
-        .routes.map((item) => ({
-          ...routeSummary(item),
-          highlighted: taxi.status === "AT_STATION" && taxi.currentStationId === item.originId,
-        }))
+      const allRoutes = load().routes.map((item) => ({
+        ...routeSummary(item),
+        highlighted: taxi.status === "AT_STATION" && taxi.currentStationId === item.originId,
+      }));
+      const corridor = driverCorridor(user.id);
+      const routes = allRoutes
+        .filter((item) => corridor.routeIds.includes(item.id))
         .sort((a, b) => b.waiting - a.waiting || b.priorityWaiting - a.priorityWaiting || a.origin.name.localeCompare(b.origin.name));
       const trip = activeTripOf(taxi);
       const outbound = trip ? route(trip.routeId) : undefined;
       const reverse = outbound
-        ? routes.find((item) => item.origin.id === outbound.destinationId && item.destination.id === outbound.originId)
+        ? allRoutes.find((item) => item.origin.id === outbound.destinationId && item.destination.id === outbound.originId)
         : undefined;
+
+      const currentDemand = routes.reduce((sum, r) => sum + r.waiting, 0);
+      const hasShortage = currentDemand <= Math.min(4, Math.floor(taxi.capacity / 3));
+
+      let shortageRecommendation: ShortageRecommendation | null = null;
+      if (hasShortage) {
+        const busStation = allRoutes.find((r) => r.origin.name.toLowerCase().includes("bus"))?.origin;
+        const highestOther = [...allRoutes].filter((r) => !corridor.routeIds.includes(r.id)).sort((a, b) => b.waiting - a.waiting)[0];
+        const suggested = busStation
+          ? {
+              id: busStation.id,
+              name: busStation.name,
+              waitingCount: allRoutes.filter((r) => r.origin.id === busStation.id).reduce((s, r) => s + r.waiting, 0),
+            }
+          : highestOther
+          ? { id: highestOther.origin.id, name: highestOther.origin.name, waitingCount: highestOther.waiting }
+          : null;
+
+        shortageRecommendation = {
+          hasShortage: true,
+          corridorName: corridor.name,
+          currentDemand,
+          suggestedStation: suggested,
+          message: `Task Shortage Alert: Low passenger demand on ${corridor.name} (${currentDemand} waiting vs ${taxi.capacity} seats). Heavy passenger queues detected at ${suggested?.name ?? "Bus station"} (${suggested?.waitingCount ?? 5} waiting). Recommended: Coordinate with station rep to assist at ${suggested?.name ?? "Bus station"} or prepare for passenger transfers.`,
+          method: "rules",
+          basedOnSamples: load().entries.filter((e) => e.status === "WAITING").length,
+          synthetic: true,
+        };
+      }
+
       return {
         routes,
         returnSuggestion: reverse
@@ -889,6 +997,8 @@ const routes: RouteDef[] = [
               priorityWaiting: reverse.priorityWaiting,
             }
           : null,
+        shortageRecommendation,
+        assignedCorridor: corridor,
       };
     },
   },

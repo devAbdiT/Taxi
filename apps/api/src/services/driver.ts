@@ -18,6 +18,7 @@ import { prisma } from "../lib/db.js";
 import { seatsUsedOf, toDriverTaxi, toDriverTrip, toTripEntry } from "../lib/serialize.js";
 import { createNotification, publishDemand, publishQueueChange, publishTripUpdate } from "../realtime/emitter.js";
 import { closeTripRoom, joinTripRoom } from "../realtime/membership.js";
+import { checkShortageRecommendation, getDriverCorridor } from "./corridor.js";
 import { listRoutesWithDemand } from "./demand.js";
 import { claimTurnToStart } from "./driverQueue.js";
 
@@ -117,10 +118,11 @@ export async function arriveAtStation(driverId: string, body: DriverArriveReques
 }
 
 export async function getDemand(driverId: string): Promise<DriverDemandResponse> {
-  const [taxi, routes] = await Promise.all([
+  const [taxi, routes, corridor] = await Promise.all([
     prisma.taxi.findUnique({
       where: { driverId },
       include: {
+        currentStation: true,
         trips: {
           where: { status: { in: ["LOADING", "DEPARTED"] } },
           include: { route: true },
@@ -130,10 +132,14 @@ export async function getDemand(driverId: string): Promise<DriverDemandResponse>
       },
     }),
     listRoutesWithDemand(),
+    getDriverCorridor(driverId),
   ]);
   if (!taxi) throw notFound("taxi_not_found", "This driver has no taxi");
 
-  const sorted = routes
+  // Filter routes to ONLY the driver's assigned corridor (e.g. Jiren ⇄ Merkato)
+  const corridorRoutes = routes.filter((route) => corridor.routeIds.includes(route.id));
+
+  const sorted = corridorRoutes
     .map((route) => ({
       ...route,
       highlighted: taxi.status === "AT_STATION" && taxi.currentStationId === route.origin.id,
@@ -142,14 +148,22 @@ export async function getDemand(driverId: string): Promise<DriverDemandResponse>
 
   const current = taxi.trips[0];
   const reverse = current
-    ? sorted.find((route) => route.origin.id === current.route.destinationId && route.destination.id === current.route.originId)
+    ? routes.find((route) => route.origin.id === current.route.destinationId && route.destination.id === current.route.originId)
     : undefined;
+
+  const shortageRecommendation = await checkShortageRecommendation(
+    corridor,
+    taxi.capacity,
+    taxi.currentStation?.name ?? null,
+  );
 
   return {
     routes: sorted,
     returnSuggestion: reverse
       ? { route: { id: reverse.id, origin: reverse.origin, destination: reverse.destination }, waiting: reverse.waiting, priorityWaiting: reverse.priorityWaiting }
       : null,
+    shortageRecommendation,
+    assignedCorridor: corridor,
   };
 }
 

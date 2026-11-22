@@ -1,6 +1,14 @@
 import { Router } from "express";
-import { CallPassengersRequest, DriverArriveRequest, Id, RespondReportRequest, StartTripRequest } from "@taxiflow/shared";
+import {
+  CallPassengersRequest,
+  DriverArriveRequest,
+  Id,
+  RespondReportRequest,
+  SetDriverCorridorRequest,
+  StartTripRequest,
+} from "@taxiflow/shared";
 import { getAuth } from "../middleware/auth.js";
+import { getDriverCorridorInfo, setDriverCorridor } from "../services/corridor.js";
 import {
   arriveAtStation,
   arriveTrip,
@@ -31,6 +39,15 @@ driverRouter.post("/driver/arrive", async (req, res) => {
 
 driverRouter.get("/driver/demand", async (req, res) => {
   res.json(await getDemand(getAuth(req).userId));
+});
+
+driverRouter.get("/driver/corridor", async (req, res) => {
+  res.json(await getDriverCorridorInfo(getAuth(req).userId));
+});
+
+driverRouter.put("/driver/corridor", async (req, res) => {
+  const body = SetDriverCorridorRequest.parse(req.body);
+  res.json(await setDriverCorridor(getAuth(req).userId, body.corridorId));
 });
 
 driverRouter.post("/driver/trips/start", async (req, res) => {

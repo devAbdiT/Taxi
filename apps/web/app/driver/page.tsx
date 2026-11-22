@@ -52,7 +52,13 @@ export default function DriverPage() {
         <>
           <DriverForecastCard stationId={taxi.currentStation?.id ?? null} />
           {demand.data.returnSuggestion && <ReturnCard suggestion={demand.data.returnSuggestion} />}
-          <DemandBoard routes={demand.data.routes} currentStationId={taxi.currentStation?.id ?? null} />
+          <DemandBoard
+            routes={demand.data.routes}
+            currentStationId={taxi.currentStation?.id ?? null}
+            shortageRecommendation={demand.data.shortageRecommendation}
+            assignedCorridor={demand.data.assignedCorridor}
+            onCorridorChanged={refresh}
+          />
         </>
       )}
       </div>

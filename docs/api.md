@@ -311,22 +311,55 @@ Response 200 `DriverArriveResponse`: `{ "taxi": DriverTaxi }`
 
 #### GET /driver/demand
 
-DRIVER. Every route, sorted by `waiting`, highest first.
+DRIVER. Shows waiting passengers for the driver's assigned corridor (2 reciprocal routes, e.g. Jiren ⇄ Merkato). If there is a passenger shortage on the corridor, returns an AI dispatch recommendation (via Gemini API or fallback rules) advising on other high-demand situations (e.g. Bus station).
 
 Response 200 `DriverDemandResponse`
 
 ```json
 {
   "routes": [
-    { "id": "rt_b_a", "origin": Station, "destination": Station,
-      "waiting": 12, "priorityWaiting": 3, "taxisAvailable": 1, "highlighted": false }
+    { "id": "rt_jr_mk", "origin": Station, "destination": Station,
+      "waiting": 3, "priorityWaiting": 0, "taxisAvailable": 1, "highlighted": true }
   ],
-  "returnSuggestion": { "route": RouteSummary, "waiting": 12, "priorityWaiting": 3 } | null
+  "returnSuggestion": { "route": RouteSummary, "waiting": 3, "priorityWaiting": 0 } | null,
+  "shortageRecommendation": {
+    "hasShortage": true,
+    "corridorName": "Jiren ⇄ Merkato",
+    "currentDemand": 3,
+    "suggestedStation": { "id": "st_bus", "name": "Bus station", "waitingCount": 5 } | null,
+    "message": "Task Shortage Alert: Low demand on Jiren ⇄ Merkato. High passenger surplus detected at Bus station (5 waiting).",
+    "method": "llm" | "rules" | "statistics",
+    "basedOnSamples": 39,
+    "synthetic": false
+  } | null,
+  "assignedCorridor": {
+    "id": "jiren_merkato",
+    "name": "Jiren ⇄ Merkato",
+    "stationA": Station,
+    "stationB": Station,
+    "routeIds": ["rt_jr_mk", "rt_mk_jr"]
+  } | null
 }
 ```
 
+- `routes`: Filtered strictly to the driver's assigned corridor routes (e.g. Jiren ⇄ Merkato).
+- `shortageRecommendation`: Generated when passenger demand on the driver's corridor is low, advising relocation to high-demand stations (powered by Gemini API if `GEMINI_API_KEY` is set).
 - `returnSuggestion` is the reverse of the taxi's active trip route (for a trip A→B it is B→A). Show it as "Waiting for your return: N passengers". It is null when there is no active trip or no reverse route.
-- `highlighted` is true for routes leaving the taxi's current station while the taxi is AT_STATION. The list is sorted by waiting, so the first highlighted route has the most passengers.
+- `highlighted` is true for routes leaving the taxi's current station while the taxi is AT_STATION.
+
+#### GET /driver/corridor
+
+DRIVER. Returns the driver's current assigned corridor and all available corridors.
+
+Response 200 `DriverCorridorResponse`: `{ "current": DriverCorridor, "available": DriverCorridor[] }`
+
+#### PUT /driver/corridor
+
+DRIVER. Sets the driver's assigned corridor.
+
+Request `SetDriverCorridorRequest`: `{ "corridorId": "jiren_merkato" }`
+
+Response 200 `DriverCorridor`
 
 #### POST /driver/trips/start
 

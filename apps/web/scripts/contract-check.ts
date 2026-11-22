@@ -17,6 +17,7 @@ import {
   DevResetResponse,
   DevSmsResponse,
   DriverArriveResponse,
+  DriverCorridorResponse,
   DriverDemandResponse,
   DriverMeResponse,
   DriverReportsResponse,
@@ -184,6 +185,7 @@ async function main() {
   let tripId: string | null = null;
   if (driver) {
     await call("GET /driver/me", driver, "GET", "/driver/me", undefined, DriverMeResponse, 200);
+    await call("GET /driver/corridor", driver, "GET", "/driver/corridor", undefined, DriverCorridorResponse, 200);
     const demand = await call<DriverDemandResponse>("GET /driver/demand", driver, "GET", "/driver/demand", undefined, DriverDemandResponse, 200);
     await call("GET /driver/reports", driver, "GET", "/driver/reports", undefined, DriverReportsResponse, 200);
     const stations = await call<StationsResponse>("GET /stations driver", driver, "GET", "/stations", undefined, StationsResponse, 200);

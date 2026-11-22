@@ -24,6 +24,8 @@ import type {
   DevSmsResponse,
   DriverArriveRequest,
   DriverArriveResponse,
+  DriverCorridor,
+  DriverCorridorResponse,
   DriverDemandResponse,
   DriverMeResponse,
   DriverMyPickupResponse,
@@ -57,6 +59,7 @@ import type {
   RespondReportRequest,
   RespondReportResponse,
   RoutesResponse,
+  SetDriverCorridorRequest,
   StartTripRequest,
   StationActionRequest,
   StationAlert,
@@ -74,7 +77,7 @@ import type {
   WaitEstimateResponse,
 } from "@/lib/types";
 
-export type HttpMethod = "GET" | "POST" | "PATCH";
+export type HttpMethod = "GET" | "POST" | "PATCH" | "PUT";
 
 export interface ApiErrorBody {
   error: string;
@@ -173,6 +176,7 @@ export const fetcher = <T>(path: string) => request<T>("GET", path);
 const get = <T>(path: string) => request<T>("GET", path);
 const post = <T>(path: string, body?: unknown) => request<T>("POST", path, body ?? {});
 const patch = <T>(path: string, body: unknown) => request<T>("PATCH", path, body);
+const put = <T>(path: string, body: unknown) => request<T>("PUT", path, body);
 
 export const api = {
   register: (body: RegisterRequest) => post<AuthResponse>("/auth/register", body),
@@ -195,6 +199,8 @@ export const api = {
   driverMe: () => get<DriverMeResponse>("/driver/me"),
   driverArrive: (body: DriverArriveRequest) => post<DriverArriveResponse>("/driver/arrive", body),
   driverDemand: () => get<DriverDemandResponse>("/driver/demand"),
+  driverCorridor: () => get<DriverCorridorResponse>("/driver/corridor"),
+  setDriverCorridor: (body: SetDriverCorridorRequest) => put<DriverCorridor>("/driver/corridor", body),
   startTrip: (body: StartTripRequest) => post<TripResponse>("/driver/trips/start", body),
   trip: (id: string) => get<TripResponse>(`/driver/trips/${id}`),
   callPassengers: (id: string, body: CallPassengersRequest = {}) =>
