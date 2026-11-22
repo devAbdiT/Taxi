@@ -36,3 +36,45 @@ export async function createUser(role: Role, name = `${role.toLowerCase()} user`
 export const createPassenger = (name?: string) => createUser("PASSENGER", name);
 
 export const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
+
+export async function createRep(stationId: string, name = "Rep Tesfaye") {
+  const rep = await createUser("STATION_REP", name);
+  await prisma.user.update({ where: { id: rep.user.id }, data: { stationId } });
+  return rep;
+}
+
+export async function createDriverWithTaxi(name: string, plate: string, stationId?: string, capacity = 14) {
+  const driver = await createUser("DRIVER", name);
+  const taxi = await prisma.taxi.create({
+    data: {
+      plate,
+      capacity,
+      driverId: driver.user.id,
+      status: stationId ? "AT_STATION" : "OFFLINE",
+      currentStationId: stationId ?? null,
+    },
+  });
+  return { ...driver, taxi };
+}
+
+/** A WAITING entry that joined `minutesAgo` minutes ago. */
+export async function waitingEntry(passengerId: string, routeId: string, minutesAgo: number, extra: { isPriority?: boolean } = {}) {
+  return prisma.queueEntry.create({
+    data: {
+      passengerId,
+      routeId,
+      isPriority: extra.isPriority ?? false,
+      assistance: extra.isPriority ? "ELDERLY" : "NONE",
+      joinedAt: new Date(Date.now() - minutesAgo * 60_000),
+    },
+  });
+}
+
+/** True when any object key (at any depth) is one of `keys`. */
+export function hasKey(value: unknown, keys: string[]): boolean {
+  if (Array.isArray(value)) return value.some((item) => hasKey(item, keys));
+  if (value && typeof value === "object") {
+    return Object.entries(value).some(([key, inner]) => keys.includes(key) || hasKey(inner, keys));
+  }
+  return false;
+}

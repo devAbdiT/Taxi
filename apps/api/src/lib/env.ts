@@ -17,6 +17,13 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   DEMO_MODE: booleanString.default(false),
   PRIORITY_ENABLED: booleanString.default(true),
+  // Advanced features (see docs/FEATURES_RULES.md).
+  PICKUP_RADIUS_KM: z.coerce.number().positive().default(3),
+  PICKUP_EXPIRY_MINUTES: z.coerce.number().positive().default(10),
+  LOCATION_STALE_SECONDS: z.coerce.number().positive().default(60),
+  DRIVER_TURN_ORDER_ENFORCED: booleanString.default(true),
+  DEMO_SIMULATE_GPS: booleanString.default(true),
+  AI_PROVIDER: z.string().default("none"),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

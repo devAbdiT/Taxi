@@ -63,6 +63,26 @@ export const ErrorCode = z.enum([
   "not_your_report",
   "already_responded",
   "not_your_station",
+  "not_your_turn",
+  "priority_boundary",
+  "suspended",
+  "duplicate_open_dispute",
+  "dispute_not_found",
+  "invalid_dispute_status",
+  "appeal_not_found",
+  "already_appealed",
+  "appeal_window_closed",
+  "appeal_not_open",
+  "action_not_found",
+  "not_in_driver_queue",
+  "driver_queue_entry_not_found",
+  "consent_required",
+  "too_fast",
+  "already_open",
+  "already_taken",
+  "pickup_not_found",
+  "invalid_pickup_status",
+  "no_location",
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
 
@@ -70,6 +90,8 @@ export type ErrorCode = z.infer<typeof ErrorCode>;
 export const ErrorResponse = z.object({
   error: z.string(),
   message: z.string(),
+  /** Only on 403 suspended: when the suspension ends (ISO 8601). */
+  endsAt: z.string().optional(),
   details: z
     .array(z.object({ path: z.string(), message: z.string() }))
     .optional(),

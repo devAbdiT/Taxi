@@ -38,8 +38,14 @@ export function hasKey(key: string): key is TKey {
   return key in en;
 }
 
-export function translate(lang: Language, key: TKey, vars?: TVars): string {
-  const text = dictionaries[lang][key] ?? dictionaries.en[key] ?? key;
+export function translate(lang: Language, key: string, varsOrFallback?: TVars | string): string {
+  const fallback = typeof varsOrFallback === "string" ? varsOrFallback : undefined;
+  const vars = typeof varsOrFallback === "object" ? varsOrFallback : undefined;
+
+  const dict = dictionaries[lang] as Record<string, string | undefined>;
+  const enDict = dictionaries.en as Record<string, string | undefined>;
+  const text = dict[key] ?? enDict[key] ?? fallback ?? key;
+
   if (!vars) return text;
   return text.replace(/\{(\w+)\}/g, (match, name: string) =>
     name in vars ? String(vars[name]) : match,
@@ -48,5 +54,5 @@ export function translate(lang: Language, key: TKey, vars?: TVars): string {
 
 export function useT() {
   const lang = useLanguage();
-  return useCallback((key: TKey, vars?: TVars) => translate(lang, key, vars), [lang]);
+  return useCallback((key: string, varsOrFallback?: TVars | string) => translate(lang, key, varsOrFallback), [lang]);
 }

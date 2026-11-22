@@ -4,10 +4,10 @@ import { EmptyState } from "@/components/States";
 import { StatusBadge } from "@/components/StatusBadge";
 import { routeName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
-import type { RouteDemand } from "@/lib/types";
+import type { DemandRoute } from "@/lib/types";
 
 interface DemandBoardProps {
-  routes: RouteDemand[];
+  routes: DemandRoute[];
   currentStationId: string | null;
 }
 
@@ -25,8 +25,9 @@ export function DemandBoard({ routes, currentStationId }: DemandBoardProps) {
         <EmptyState title={t("passenger.noRoutes")} />
       ) : (
         <ol className="grid gap-3 xl:grid-cols-2">
-          {sorted.map(({ route, waiting, priorityWaiting }) => {
+          {sorted.map((route) => {
             const fromHere = route.origin.id === currentStationId;
+            const { waiting, priorityWaiting } = route;
             return (
               <li
                 key={route.id}

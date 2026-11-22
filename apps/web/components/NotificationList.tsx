@@ -8,12 +8,13 @@ import { RelativeTime } from "@/components/RelativeTime";
 import { api, fetcher } from "@/lib/api";
 import { REFRESH_MS } from "@/lib/config";
 import { useT } from "@/lib/i18n";
-import type { Notification } from "@/lib/types";
+import type { NotificationsResponse } from "@/lib/types";
 
 export function NotificationList() {
   const t = useT();
-  const { data, error, mutate } = useSWR<Notification[]>("/notifications", fetcher, { refreshInterval: REFRESH_MS });
-  const unread = data?.filter((note) => !note.read).length ?? 0;
+  const { data, error, mutate } = useSWR<NotificationsResponse>("/notifications", fetcher, { refreshInterval: REFRESH_MS });
+  const unread = data?.unread ?? 0;
+  const notes = data?.notifications ?? [];
 
   useEffect(() => {
     if (unread === 0) return;
@@ -23,7 +24,14 @@ export function NotificationList() {
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-bold">{t("notes.title")}</h2>
+        <h2 className="text-lg font-bold">
+          {t("notes.title")}
+          {unread > 0 && (
+            <span className="ml-2 inline-flex min-h-7 min-w-7 items-center justify-center rounded-full bg-amber-400 px-2 text-sm text-slate-950">
+              {unread}
+            </span>
+          )}
+        </h2>
         {unread > 0 && (
           <Button variant="secondary" className="px-3 text-sm" onClick={() => void api.markNotificationsRead().then(() => mutate())}>
             {t("notes.markRead")}
@@ -34,11 +42,11 @@ export function NotificationList() {
         <ErrorState error={error} onRetry={() => mutate()} />
       ) : !data ? (
         <LoadingState />
-      ) : data.length === 0 ? (
+      ) : notes.length === 0 ? (
         <EmptyState title={t("notes.empty")} />
       ) : (
         <ul className="flex flex-col gap-2">
-          {data.map((note) => (
+          {notes.map((note) => (
             <li
               key={note.id}
               className={`rounded-xl border-2 p-3 ${note.read ? "border-slate-200 bg-white" : "border-amber-400 bg-amber-50"}`}

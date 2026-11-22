@@ -33,7 +33,7 @@ export async function getAdminStats(): Promise<AdminStatsResponse> {
     prisma.$queryRaw<{ average: unknown }[]>`
       SELECT AVG(EXTRACT(EPOCH FROM ("calledAt" - "joinedAt")))::float8 AS average
       FROM "QueueEntry"
-      WHERE "calledAt" IS NOT NULL`,
+      WHERE "calledAt" IS NOT NULL AND synthetic = false`,
     prisma.$queryRaw<{ routeId: string; completed: unknown; factor: unknown }[]>`
       SELECT trip."routeId",
              COUNT(*)::int AS completed,

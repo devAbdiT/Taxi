@@ -1,4 +1,7 @@
+
+
 @import "tailwindcss";
+
 
 @theme inline {
   --font-sans: var(--font-noto-latin), var(--font-noto-ethiopic), system-ui, sans-serif;
@@ -53,7 +56,7 @@ body {
 
 .pulse-ring {
   box-shadow: 0 0 0 0 rgba(31, 157, 107, 0.55);
-  animation: pulse 1.6s ease-out infinite;
+  animation: pulse-ring 1.6s ease-out infinite;
 }
 
 .shimmer {
@@ -84,7 +87,8 @@ body {
   }
 }
 
-@keyframes pulse {
+/* Not named "pulse": Tailwind defines that keyframe with an opacity step and the two would merge. */
+@keyframes pulse-ring {
   70% {
     box-shadow: 0 0 0 12px rgba(31, 157, 107, 0);
   }

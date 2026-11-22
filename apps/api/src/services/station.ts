@@ -46,7 +46,7 @@ export async function getStationQueues(repId: string): Promise<StationQueuesResp
         FROM "QueueEntry" q
         JOIN "User" u ON u.id = q."passengerId"
         LEFT JOIN (
-          SELECT id, ROW_NUMBER() OVER (PARTITION BY "routeId" ORDER BY "isPriority" DESC, "joinedAt" ASC, id ASC) AS position
+          SELECT id, ROW_NUMBER() OVER (PARTITION BY "routeId" ORDER BY "isPriority" DESC, "sortKey" ASC, id ASC) AS position
           FROM "QueueEntry"
           WHERE status = 'WAITING' AND "routeId" IN (${Prisma.join(routeIds)})
         ) AS ranked ON ranked.id = q.id

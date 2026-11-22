@@ -144,8 +144,8 @@ async function main(): Promise<void> {
   await Promise.all([whenConnected(driver), whenConnected(ahead), whenConnected(behind), whenConnected(behindTab)]);
 
   const routes = RoutesResponse.parse(await api("/routes", driverToken, "GET"));
-  const route = routes.routes.find((item) => item.origin.name === "Area B" && item.destination.name === "Area A");
-  if (!route) throw new Error("B to A route missing");
+  const route = routes.routes.find((item) => item.origin.name === "Jimma University" && item.destination.name === "Merkato");
+  if (!route) throw new Error("Jimma University to Merkato route missing");
   const waitingBefore = route.waiting;
 
   const mine = MyQueueResponse.parse(await api("/queue/me", behindToken, "GET"));

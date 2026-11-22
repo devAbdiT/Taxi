@@ -5,6 +5,8 @@ export class AppError extends Error {
     readonly status: number,
     readonly code: ErrorCode,
     message: string,
+    /** Extra fields for the error body. Only `endsAt` today (403 suspended). */
+    readonly extra: { endsAt?: string } = {},
   ) {
     super(message);
     this.name = "AppError";

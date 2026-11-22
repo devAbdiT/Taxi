@@ -11,6 +11,7 @@ import { useUser } from "@/components/RequireRole";
 import { logout } from "@/lib/auth";
 import { USE_MOCKS } from "@/lib/config";
 import { useT, type TKey } from "@/lib/i18n";
+import { useConnected } from "@/lib/live/status";
 
 type ShellRole = "passenger" | "driver" | "station" | "admin";
 
@@ -35,15 +36,26 @@ const links: Record<ShellRole, { href: string; label: TKey; icon: IconName; matc
   ],
 };
 
+/** The four passenger tabs on a phone. Report and Contracts live under Profile. */
+const phoneTabs: ("/passenger" | "/passenger/queue" | "/passenger/trips" | "/passenger/profile")[] = [
+  "/passenger",
+  "/passenger/queue",
+  "/passenger/trips",
+  "/passenger/profile",
+];
+
 export function AppShell({ role, children }: { role: ShellRole; children: ReactNode }) {
   const t = useT();
   const user = useUser();
   const path = usePathname();
+  const connected = useConnected();
   const items = links[role];
+  const phoneItems = items.filter((item) => (phoneTabs as string[]).includes(item.href));
+  const passenger = role === "passenger";
 
   return (
     <div className="min-h-dvh bg-cream lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
-      <aside className="hero flex flex-col gap-6 px-4 py-4 lg:sticky lg:top-0 lg:h-dvh lg:justify-between lg:p-6">
+      <aside className={`hero flex flex-col gap-6 px-4 py-4 lg:sticky lg:top-0 lg:h-dvh lg:justify-between lg:p-6 ${passenger ? "max-lg:hidden" : ""}`}>
         <div className="flex flex-col gap-6">
           <Link href="/" aria-label="MengedLink" className="inline-flex w-fit rounded-xl bg-white px-2 py-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-taxi">
             <Logo className="h-12 w-auto" />
@@ -87,7 +99,7 @@ export function AppShell({ role, children }: { role: ShellRole; children: ReactN
           </div>
           <p className="hidden text-sm font-semibold text-muted lg:block">{t(`role.${user.role}`)}</p>
           <div className="flex items-center gap-2">
-            {USE_MOCKS && <LiveIndicator />}
+            <LiveIndicator live={USE_MOCKS || connected} />
             <LanguageSwitch />
             <button
               type="button"
@@ -98,10 +110,33 @@ export function AppShell({ role, children }: { role: ShellRole; children: ReactN
             </button>
           </div>
         </header>
-        <main id="content" className="px-4 py-6 sm:px-6 lg:px-8">
-          <div className="w-full">{children}</div>
+        <main id="content" className={`px-4 py-6 sm:px-6 lg:px-8 ${passenger ? "pb-28 lg:pb-6" : ""}`}>
+          <div className="w-full min-w-0">{children}</div>
         </main>
       </div>
+      {passenger && (
+        <nav
+          aria-label={t(`role.${user.role}`)}
+          className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 gap-1 border-t border-line bg-card/95 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgba(14,27,51,0.08)] backdrop-blur lg:hidden"
+        >
+          {phoneItems.map((item) => {
+            const active = item.match(path);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[14px] px-1 text-xs font-semibold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-taxi ${
+                  active ? "bg-cobalt text-white" : "text-ink hover:bg-sky"
+                }`}
+              >
+                <Icon name={item.icon} className="size-5" />
+                <span className="w-full truncate text-center">{t(item.label)}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      )}
     </div>
   );
 }

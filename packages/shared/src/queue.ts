@@ -25,6 +25,8 @@ export const MyQueueResponse = z.object({
   position: z.number().int().min(1).nullable(),
   /** Set only while entry.status is CALLED. */
   taxiPlate: z.string().nullable(),
+  /** Added later. Minutes until called, from GET /ai/wait-estimate. Absent or null when unknown. */
+  estimatedWaitMinutes: z.number().nullable().optional(),
 });
 export type MyQueueResponse = z.infer<typeof MyQueueResponse>;
 

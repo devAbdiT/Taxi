@@ -8,18 +8,7 @@ import { Field } from "@/components/Field";
 import { FormError } from "@/components/States";
 import { api } from "@/lib/api";
 import { cleanPhone, homeFor, isValidPhone, startSession } from "@/lib/auth";
-import { USE_MOCKS } from "@/lib/config";
 import { useT, type TKey } from "@/lib/i18n";
-
-const demoAccounts: { label: TKey; phone: string }[] = [
-  { label: "auth.demoPassenger", phone: "0911000100" },
-  { label: "auth.demoDriver1", phone: "0911000001" },
-  { label: "auth.demoDriver2", phone: "0911000002" },
-  { label: "auth.demoDriver3", phone: "0911000003" },
-  { label: "auth.demoStationA", phone: "0911000011" },
-  { label: "auth.demoStationB", phone: "0911000012" },
-  { label: "auth.demoAdmin", phone: "0911000099" },
-];
 
 export default function LoginPage() {
   const t = useT();
@@ -100,31 +89,6 @@ export default function LoginPage() {
           {t("home.register")}
         </Link>
       </p>
-
-      {USE_MOCKS && (
-        <div className="flex flex-col gap-2 rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-4">
-          <p className="font-semibold text-ink">{t("auth.tryDemo")}</p>
-          <div className="grid grid-cols-2 gap-2">
-            {demoAccounts.map((account) => (
-              <Button
-                key={account.phone}
-                variant="secondary"
-                className="px-2 text-sm"
-                loading={submitting}
-                onClick={() => {
-                  setPhone(account.phone);
-                  setPassword("demo1234");
-                  setFieldErrors({});
-                  setFormError(null);
-                  void signIn(account.phone, "demo1234");
-                }}
-              >
-                {t(account.label)}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
     </section>
   );
 }

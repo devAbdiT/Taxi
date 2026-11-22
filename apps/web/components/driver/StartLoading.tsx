@@ -8,31 +8,31 @@ import { EmptyState, FormError } from "@/components/States";
 import { api } from "@/lib/api";
 import { countKey, routeName, stationName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
-import type { RouteDemand, Station, TripDetail } from "@/lib/types";
+import type { DemandRoute, Station } from "@/lib/types";
 
 interface StartLoadingProps {
   station: Station;
-  routes: RouteDemand[];
-  onStarted: (trip: TripDetail) => Promise<unknown>;
+  routes: DemandRoute[];
+  onStarted: () => Promise<unknown>;
 }
 
 export function StartLoading({ station, routes, onStarted }: StartLoadingProps) {
   const t = useT();
   const lang = useLanguage();
-  const fromHere = routes.filter((r) => r.route.origin.id === station.id);
+  const fromHere = routes.filter((route) => route.origin.id === station.id);
   const [routeId, setRouteId] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
-  const selected = routeId ?? (fromHere.length === 1 ? fromHere[0].route.id : null);
+  const selected = routeId ?? (fromHere.length === 1 ? fromHere[0].id : null);
 
   async function start() {
     if (!selected) return;
     setStarting(true);
     setError(null);
     try {
-      const trip = await api.startTrip({ routeId: selected });
-      await onStarted(trip);
+      await api.startTrip({ routeId: selected });
+      await onStarted();
       setRouteId(null);
     } catch (err) {
       setError(err);
@@ -50,7 +50,7 @@ export function StartLoading({ station, routes, onStarted }: StartLoadingProps) 
         {fromHere.length === 0 ? (
           <EmptyState title={t("driver.noRoutesHere")} />
         ) : (
-          fromHere.map(({ route, waiting }) => (
+          fromHere.map((route) => (
             <ChoiceCard
               key={route.id}
               name="start-route"
@@ -60,8 +60,8 @@ export function StartLoading({ station, routes, onStarted }: StartLoadingProps) 
             >
               <span className="block text-lg font-semibold">{routeName(route, lang)}</span>
               <span className="block">
-                {t(countKey(waiting, "passenger.waitingNone", "passenger.waitingOne", "passenger.waitingMany"), {
-                  n: waiting,
+                {t(countKey(route.waiting, "passenger.waitingNone", "passenger.waitingOne", "passenger.waitingMany"), {
+                  n: route.waiting,
                 })}
               </span>
             </ChoiceCard>

@@ -2,11 +2,11 @@
 
 import { usePathname } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { Button } from "@/components/Button";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
-import { Button } from "@/components/Button";
 import { useLive } from "@/hooks/useLive";
-import { api } from "@/lib/api";
+import { api, clearToken } from "@/lib/api";
 import { homeFor, startSession } from "@/lib/auth";
 import { DEMO_CONTROLS, USE_MOCKS } from "@/lib/config";
 import { useT, type TKey } from "@/lib/i18n";
@@ -47,42 +47,111 @@ const roles: { label: TKey; phone: string }[] = [
   { label: "auth.demoAdmin", phone: "0911000099" },
 ];
 
+/**
+ * Floating demo switcher (NEXT_PUBLIC_DEMO_CONTROLS=true).
+ * Mocks on: the extra buttons change the in-browser mock store.
+ * Mocks off: only "Reset demo" (POST /dev/reset) and the one-tap sign-in work against the real API.
+ */
 function DemoPanel() {
   const t = useT();
   const toast = useToast();
   const [open, setOpen] = useState(false);
-  if (!DEMO_CONTROLS || !USE_MOCKS) return null;
+  const [busy, setBusy] = useState(false);
+  if (!DEMO_CONTROLS) return null;
 
   async function jump(phone: string) {
-    const auth = await api.login({ phone, password: "demo1234" });
-    await startSession(auth);
-    window.location.assign(homeFor(auth.user.role));
+    setBusy(true);
+    try {
+      const auth = await api.login({ phone, password: "demo1234" });
+      await startSession(auth);
+      window.location.assign(homeFor(auth.user.role));
+    } catch (err) {
+      toast(err instanceof Error ? err.message : t("demo.resetFailed"));
+      setBusy(false);
+    }
+  }
+
+  async function reset() {
+    if (USE_MOCKS) {
+      resetMock();
+      toast(t("demo.resetDone"));
+      window.location.reload();
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.devReset();
+      // The reset rebuilds every account, so the old sign-in no longer exists.
+      clearToken();
+      toast(t("demo.resetDone"));
+      window.location.assign("/");
+    } catch {
+      toast(t("demo.resetFailed"));
+      setBusy(false);
+    }
   }
 
   return (
-    <div className="fixed bottom-4 right-3 z-40 flex max-w-[min(20rem,calc(100vw-1.5rem))] flex-col items-end gap-2">
+    <div className="fixed bottom-20 right-3 z-40 flex max-w-[min(20rem,calc(100vw-1.5rem))] flex-col items-end gap-2 lg:bottom-4">
       {open && (
-        <div className="rise flex w-72 flex-col gap-2 rounded-[20px] border border-line bg-card p-3 shadow-card">
+        <div className="rise flex w-72 max-w-full flex-col gap-2 rounded-[20px] border border-line bg-card p-3 shadow-card">
           <p className="font-display text-lg font-bold">{t("demo.title")}</p>
-          <Button onClick={() => { demoJoin(false); toast(t("demo.done")); }} fullWidth>{t("demo.join")}</Button>
-          <Button onClick={() => { demoJoin(true); toast(t("demo.done")); }} fullWidth>{t("demo.priority")}</Button>
-          <Button onClick={() => void demoCallNext().then(() => toast(t("demo.done")))} fullWidth>{t("demo.call")}</Button>
-          <Button onClick={() => { demoBumpMe(); toast(t("demo.done")); }} fullWidth>{t("demo.bump")}</Button>
-          <Button onClick={() => void demoCompleteTrip().then(() => toast(t("demo.done")))} fullWidth>{t("demo.complete")}</Button>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              resetMock();
-              toast(t("demo.resetDone"));
-              window.location.reload();
-            }}
-            fullWidth
-          >
+          {USE_MOCKS ? (
+            <>
+              <Button onClick={() => { demoJoin(false); toast(t("demo.done")); }} fullWidth>{t("demo.join")}</Button>
+              <Button onClick={() => { demoJoin(true); toast(t("demo.done")); }} fullWidth>{t("demo.priority")}</Button>
+              <Button onClick={() => void demoCallNext().then(() => toast(t("demo.done")))} fullWidth>{t("demo.call")}</Button>
+              <Button onClick={() => { demoBumpMe(); toast(t("demo.done")); }} fullWidth>{t("demo.bump")}</Button>
+              <Button onClick={() => void demoCompleteTrip().then(() => toast(t("demo.done")))} fullWidth>{t("demo.complete")}</Button>
+            </>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    await api.createDispute({
+                      type: "LINE_JUMPING",
+                      description: "Demo: passenger jumped the queue ahead of priority turn",
+                    });
+                    toast("Demo dispute created");
+                  } catch (err: any) {
+                    toast(err?.message ?? "Failed to create dispute");
+                  }
+                }}
+                className="text-xs py-2 min-h-9"
+                fullWidth
+              >
+                ⚠️ Create Demo Dispute
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    await api.createPickup({
+                      lat: 7.6686,
+                      lng: 36.8313,
+                      seats: 1,
+                      placeNote: "Awetu Mall gate (Demo)",
+                    });
+                    toast("Demo pickup created near me");
+                  } catch (err: any) {
+                    toast(err?.message ?? "Failed to create pickup");
+                  }
+                }}
+                className="text-xs py-2 min-h-9"
+                fullWidth
+              >
+                📍 Create Pickup Near Me
+              </Button>
+            </div>
+          )}
+          <Button variant="secondary" onClick={() => void reset()} loading={busy} fullWidth>
             {t("demo.reset")}
           </Button>
           <div className="grid grid-cols-2 gap-2">
             {roles.map((role) => (
-              <Button key={role.phone} variant="secondary" className="px-2 text-sm" onClick={() => void jump(role.phone)}>
+              <Button key={role.phone} variant="secondary" className="px-2 text-sm" disabled={busy} onClick={() => void jump(role.phone)}>
                 {t(role.label)}
               </Button>
             ))}
@@ -122,7 +191,7 @@ export function Providers({ children }: { children: ReactNode }) {
         <Shell>{children}</Shell>
         <DemoPanel />
         {message && (
-          <p role="status" className="rise fixed bottom-4 left-4 z-50 max-w-xs rounded-[14px] bg-ink px-4 py-3 text-sm font-semibold text-white">
+          <p role="status" className="rise fixed bottom-20 left-4 z-50 max-w-xs rounded-[14px] bg-ink px-4 py-3 text-sm font-semibold text-white lg:bottom-4">
             {message}
           </p>
         )}

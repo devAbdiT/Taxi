@@ -12,7 +12,7 @@ import { api, fetcher } from "@/lib/api";
 import { REFRESH_MS } from "@/lib/config";
 import { countKey, routeName, stationName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
-import type { TripDetail } from "@/lib/types";
+import type { DriverTrip, TripResponse } from "@/lib/types";
 
 interface TripPanelProps {
   tripId: string;
@@ -24,19 +24,20 @@ interface TripPanelProps {
 export function TripPanel({ tripId, waiting, onChanged }: TripPanelProps) {
   const t = useT();
   const lang = useLanguage();
-  const { data: trip, error, mutate } = useSWR<TripDetail>(`/driver/trips/${tripId}`, fetcher, {
+  const { data, error, mutate } = useSWR<TripResponse>(`/driver/trips/${tripId}`, fetcher, {
     refreshInterval: REFRESH_MS,
   });
+  const trip = data?.trip;
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<unknown>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
 
-  async function run(id: string, action: () => Promise<TripDetail>) {
+  async function run(id: string, action: () => Promise<{ trip: DriverTrip }>) {
     setBusy(id);
     setActionError(null);
     try {
       const updated = await action();
-      await mutate(updated, { revalidate: false });
+      await mutate({ trip: updated.trip }, { revalidate: false });
       await onChanged();
       setConfirmingCancel(false);
     } catch (err) {
@@ -50,7 +51,7 @@ export function TripPanel({ tripId, waiting, onChanged }: TripPanelProps) {
   if (!trip) return <LoadingState />;
 
   const loading = trip.status === "LOADING";
-  const seatsLeft = trip.capacity - trip.seatsUsed;
+  const seatsLeft = trip.seatsLeft;
   const boarded = trip.entries.filter((e) => e.status === "BOARDED").length;
   const stillCalled = trip.entries.filter((e) => e.status === "CALLED").length;
   const destination = stationName(trip.route.destination, lang);

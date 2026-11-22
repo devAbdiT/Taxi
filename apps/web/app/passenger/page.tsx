@@ -14,7 +14,7 @@ import { api, ApiError, fetcher } from "@/lib/api";
 import { REFRESH_MS } from "@/lib/config";
 import { countKey, routeName } from "@/lib/format";
 import { useLanguage, useT } from "@/lib/i18n";
-import type { AssistanceType, MyQueue, RouteSummary } from "@/lib/types";
+import type { AssistanceType, MyQueueResponse, RoutesResponse } from "@/lib/types";
 
 const ROUTES_KEY = "/routes";
 const MY_QUEUE_KEY = "/queue/me";
@@ -40,8 +40,8 @@ export default function PassengerRoutesPage() {
   const lang = useLanguage();
   const router = useRouter();
   const { mutate } = useSWRConfig();
-  const routes = useSWR<RouteSummary[]>(ROUTES_KEY, fetcher, { refreshInterval: REFRESH_MS });
-  const myQueue = useSWR<MyQueue>(MY_QUEUE_KEY, fetcher);
+  const routes = useSWR<RoutesResponse>(ROUTES_KEY, fetcher, { refreshInterval: REFRESH_MS });
+  const myQueue = useSWR<MyQueueResponse>(MY_QUEUE_KEY, fetcher);
 
   const [routeId, setRouteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -70,9 +70,10 @@ export default function PassengerRoutesPage() {
   }
 
   const activeEntry = myQueue.data?.entry;
-  const activeRoute = myQueue.data?.route;
+  const activeRoute = activeEntry?.route;
   const query = search.trim().toLowerCase();
-  const visibleRoutes = (routes.data ?? []).filter((route) => {
+  const routeList = routes.data?.routes ?? [];
+  const visibleRoutes = routeList.filter((route) => {
     if (!query) return true;
     const text = [route.origin.name, route.origin.nameAm, route.destination.name, route.destination.nameAm]
       .filter(Boolean)
@@ -85,6 +86,29 @@ export default function PassengerRoutesPage() {
     <section className="flex flex-col gap-6">
       <h1 className="font-display text-3xl font-bold">{t("home.welcome", { name: user.name.split(" ")[0] })}</h1>
       <p className="text-muted">{t("passenger.title")}</p>
+
+      {/* GPS On-Demand Pickup Banner */}
+      <Link
+        href="/passenger/pickup"
+        className="flex items-center justify-between rounded-2xl border-2 border-taxi bg-taxi/15 p-4 transition hover:bg-taxi/25 active:scale-[.99]"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex size-11 items-center justify-center rounded-full bg-taxi text-ink font-bold">
+            <Icon name="car" className="size-6" />
+          </div>
+          <div>
+            <h2 className="font-display text-base font-bold text-ink">
+              {t("pickup.title", "Request a Pickup")}
+            </h2>
+            <p className="text-xs text-muted">
+              {t("pickup.subtitle", "Get picked up by an available taxi nearby")}
+            </p>
+          </div>
+        </div>
+        <span className="flex size-8 items-center justify-center rounded-full bg-card border border-line text-ink">
+          <Icon name="arrowRight" className="size-4" />
+        </span>
+      </Link>
 
       {activeEntry && activeRoute && (
         <div className="flex flex-col gap-1 rounded-[20px] bg-go-soft p-4 text-ink">
@@ -110,7 +134,7 @@ export default function PassengerRoutesPage() {
           <ErrorState error={routes.error} onRetry={() => routes.mutate()} />
         ) : !routes.data ? (
           <LoadingState />
-        ) : routes.data.length === 0 ? (
+        ) : routeList.length === 0 ? (
           <EmptyState title={t("passenger.noRoutes")} />
         ) : visibleRoutes.length === 0 ? (
           <EmptyState title={t("passenger.noMatch")} />

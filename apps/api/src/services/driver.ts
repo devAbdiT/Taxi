@@ -17,7 +17,9 @@ import { arrivedText, calledText, noShowText, returnedText } from "../lib/messag
 import { prisma } from "../lib/db.js";
 import { seatsUsedOf, toDriverTaxi, toDriverTrip, toTripEntry } from "../lib/serialize.js";
 import { createNotification, publishDemand, publishQueueChange, publishTripUpdate } from "../realtime/emitter.js";
+import { closeTripRoom, joinTripRoom } from "../realtime/membership.js";
 import { listRoutesWithDemand } from "./demand.js";
+import { claimTurnToStart } from "./driverQueue.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -166,10 +168,12 @@ export async function startTrip(driverId: string, body: StartTripRequest): Promi
       throw conflict("active_trip_exists", "This taxi already has an active trip");
     }
 
+    await claimTurnToStart(tx, taxi);
     const created = await tx.trip.create({ data: { taxiId: taxi.id, routeId: route.id, status: "LOADING" } });
     await tx.taxi.update({ where: { id: taxi.id }, data: { status: "LOADING" } });
     return { trip: toDriverTrip(await loadTrip(tx, created.id)) };
   });
+  joinTripRoom(driverId, response.trip.id);
   await publishDemand([body.routeId]);
   await publishTripUpdate(response.trip.id);
   return response;
@@ -196,7 +200,7 @@ export async function callPassengers(driverId: string, tripId: string, body: Cal
     const locked = await tx.$queryRaw<{ id: string }[]>`
       SELECT id FROM "QueueEntry"
       WHERE "routeId" = ${trip.routeId} AND status = 'WAITING'
-      ORDER BY "isPriority" DESC, "joinedAt" ASC, id ASC
+      ORDER BY "isPriority" DESC, "sortKey" ASC, id ASC
       LIMIT ${count}
       FOR UPDATE SKIP LOCKED`;
 
@@ -230,6 +234,8 @@ export async function callPassengers(driverId: string, tripId: string, body: Cal
     };
   });
   await deliver(committed.notes);
+  // Called passengers can now follow the taxi (server-controlled room).
+  for (const note of committed.notes) joinTripRoom(note.userId, tripId);
   await publishQueueChange({ routeIds: [committed.routeId] });
   await publishTripUpdate(tripId);
   return committed.response;
@@ -296,6 +302,7 @@ export async function departTrip(driverId: string, tripId: string): Promise<Trip
 
     await tx.trip.update({ where: { id: trip.id }, data: { status: "DEPARTED", departedAt: new Date() } });
     await tx.taxi.update({ where: { id: trip.taxiId }, data: { status: "EN_ROUTE", currentStationId: null } });
+    await tx.driverQueueEntry.updateMany({ where: { taxiId: trip.taxiId, status: "LOADING" }, data: { status: "DEPARTED" } });
     return {
       response: { trip: toDriverTrip(await loadTrip(tx, trip.id)) },
       notes: pendingNotes(stillCalled.map((entry) => entry.passenger), "QUEUE_NO_SHOW", noShowText),
@@ -326,6 +333,8 @@ export async function cancelTrip(driverId: string, tripId: string): Promise<Trip
 
     await tx.trip.update({ where: { id: trip.id }, data: { status: "CANCELLED" } });
     await tx.taxi.update({ where: { id: trip.taxiId }, data: { status: "AT_STATION" } });
+    // The driver keeps their place in the driver line.
+    await tx.driverQueueEntry.updateMany({ where: { taxiId: trip.taxiId, status: "LOADING" }, data: { status: "WAITING" } });
     return {
       response: { trip: toDriverTrip(await loadTrip(tx, trip.id)) },
       notes: pendingNotes(returning.map((entry) => entry.passenger), "QUEUE_RETURNED", returnedText),
@@ -357,6 +366,7 @@ export async function arriveTrip(driverId: string, tripId: string): Promise<Arri
     };
   });
   await deliver(committed.notes);
+  closeTripRoom(tripId);
   await publishTripUpdate(tripId);
   await publishDemand(await routesLeaving([committed.destinationId]));
   return committed.response;

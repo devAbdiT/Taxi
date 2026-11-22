@@ -32,7 +32,7 @@ export async function enterAs(role: "PASSENGER" | "DRIVER", language: "en" | "am
 /** Store the token and prime the /me cache so the next page renders without a second request. */
 export async function startSession({ token, user }: AuthResponse) {
   setToken(token);
-  await mutate(ME_KEY, user, { revalidate: false });
+  await mutate(ME_KEY, { user }, { revalidate: false });
 }
 
 /** Full page load so no cached data from this session survives. */
